@@ -3,4 +3,9 @@ project(TSDB)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(TSDB main.cpp)
+add_executable(TSDB main.cpp Storage.cpp)
+
+#mkdir && cd build
+#cmake ..
+#cmake --build .
+#./TSDB
