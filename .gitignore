@@ -1,0 +1,61 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# CLion / JetBrains
+.idea/
+*.iml
+*.iws
+
+# Common build folders
+cmake-build-*/
+build/
+out/
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+Makefile
+
+# Compiled objects, libraries, binaries
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.dylib
+*.exe
+*.out
+a.out
+
+# Debug symbols
+*.dSYM/
+
+# Logs, temp, editor backup files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+*.bak
+
+# IDEs / editors
+.vscode/
+
+# Package managers / deps
+.vcpkg/
+third_party/build/
+
+# Misc
+core
+tags
+TAGS
+coverage/
+*.tar.gz
+*.zip
