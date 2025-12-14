@@ -1,0 +1,5 @@
+#Build and run project
+mkdir build && cd build && cmake .. && cmake --build . && ./TSDB
+
+#Run tests
+mkdir -p build && cd build && cmake .. && make && ctest --verbose
