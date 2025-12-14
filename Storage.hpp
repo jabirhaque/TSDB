@@ -8,9 +8,10 @@ class Storage
 public:
     explicit Storage(const std::string& filename);
 
-    void append(const Record& r);
+    bool append(const Record& r);
     std::vector<Record> readAll() const;
 
 private:
     std::string filename;
+    int64_t lastTimestamp;
 };
