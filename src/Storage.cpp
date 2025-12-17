@@ -2,36 +2,43 @@
 #include <fstream>
 #include <sstream>
 
+
 Storage::Storage(const std::string& filename) : filename(filename)
 {
     lastTimestamp = std::numeric_limits<int64_t>::min();
-    {
-        std::ifstream inFile(filename);
-        if (inFile.is_open()) {
+
+    std::ifstream inFile(filename, std::ios::binary);
+    if (inFile.is_open()) {
+        inFile.seekg(0, std::ios::end);
+        std::streampos fileSize = inFile.tellg();
+
+        if (fileSize >= static_cast<std::streampos>(sizeof(Record))) {
+            inFile.seekg(-static_cast<std::streamoff>(sizeof(Record)), std::ios::end);
+
             Record last;
-            bool hasRecord = false;
+            inFile.read(reinterpret_cast<char*>(&last), sizeof(Record));
 
-            while (inFile >> last.timestamp >> last.value) {
-                hasRecord = true;
-            }
-
-            if (hasRecord) {
-                lastTimestamp = last.timestamp;
-            }
+            lastTimestamp = last.timestamp;
         }
     }
+}
+
+int64_t Storage::getLastTimestamp()
+{
+    return lastTimestamp;
 }
 
 bool Storage::append(const Record& r)
 {
     if (r.timestamp <= lastTimestamp) return false;
 
-    std::ofstream outFile(filename, std::ios::app);
+    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
     if (!outFile.is_open()) {
         throw std::runtime_error("Failed to open file for writing: " + filename);
     }
 
-    outFile << r.timestamp << " " << r.value << "\n";
+    outFile.write(reinterpret_cast<const char*>(&r), sizeof(Record));
+
     outFile.close();
 
     lastTimestamp = r.timestamp;
@@ -40,22 +47,22 @@ bool Storage::append(const Record& r)
 
 
 std::vector<Record> Storage::readAll() const {
-    std::ifstream inFile(filename);
+    std::ifstream inFile(filename, std::ios::binary);
     if (!inFile.is_open()) {
         throw std::runtime_error("Failed to open file for reading: " + filename);
     }
 
-    std::vector<Record> records;
-    std::string line;
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+    inFile.seekg(0, std::ios::beg);
 
-    while (std::getline(inFile, line)) {
-        std::istringstream iss(line);
-        Record r;
-        if (!(iss >> r.timestamp >> r.value)) {
-            continue;
-        }
-        records.push_back(r);
-    }
+    std::vector<Record> records;
+    if (fileSize == 0) return records;
+
+    size_t numRecords = fileSize / sizeof(Record);
+    records.resize(numRecords);
+
+    inFile.read(reinterpret_cast<char*>(records.data()), fileSize);
 
     inFile.close();
     return records;
