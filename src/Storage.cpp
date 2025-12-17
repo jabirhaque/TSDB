@@ -23,6 +23,11 @@ Storage::Storage(const std::string& filename) : filename(filename)
     }
 }
 
+int64_t Storage::getLastTimestamp()
+{
+    return lastTimestamp;
+}
+
 bool Storage::append(const Record& r)
 {
     if (r.timestamp <= lastTimestamp) return false;
