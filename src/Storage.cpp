@@ -9,10 +9,14 @@ Storage::Storage(const std::string& filename) : filename(filename)
 
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
+
+        inFile.seekg(0, std::ios::beg);
+        inFile.read(reinterpret_cast<char*>(&header), sizeof(TSDBHeader));
+
         inFile.seekg(0, std::ios::end);
         std::streampos fileSize = inFile.tellg();
 
-        if (fileSize >= static_cast<std::streampos>(sizeof(Record))) {
+        if (fileSize - static_cast<std::streampos>(sizeof(TSDBHeader)) >= static_cast<std::streampos>(sizeof(Record))) {
             inFile.seekg(-static_cast<std::streamoff>(sizeof(Record)), std::ios::end);
 
             Record last;
@@ -20,6 +24,16 @@ Storage::Storage(const std::string& filename) : filename(filename)
 
             lastTimestamp = last.timestamp;
         }
+    }
+    else
+    {
+        header = {'T', 'S', 'D', 'B', 1, {0, 0, 0}, static_cast<uint16_t>(sizeof(Record))};
+        std::ofstream outFile(filename, std::ios::binary | std::ios::app);
+        if (!outFile.is_open()) {
+            throw std::runtime_error("Failed to open file for writing: " + filename);
+        }
+        outFile.write(reinterpret_cast<const char*>(&header), sizeof(TSDBHeader));
+        outFile.close();
     }
 }
 

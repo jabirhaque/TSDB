@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include "Record.hpp"
+#include "TSDBHeader.hpp"
 #include <vector>
 
 class Storage
@@ -15,4 +16,5 @@ public:
 private:
     std::string filename;
     int64_t lastTimestamp;
+    TSDBHeader header;
 };
