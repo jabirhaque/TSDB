@@ -12,6 +12,7 @@ public:
     bool append(const Record& r);
     std::vector<Record> readAll() const;
     int64_t getLastTimestamp();
+    TSDBHeader getHeader();
 
 private:
     std::string filename;

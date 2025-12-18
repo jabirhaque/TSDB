@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "../src/Storage.hpp"
+#include <fstream>
 
 TEST(StorageTest, AppendSingleRecord) {
     const char* filename = "testdb.txt";
@@ -125,5 +126,91 @@ TEST(StorageTest, RestartPreservesMonotonicity) {
     auto records2 = s.readAll();
     ASSERT_EQ(records.size(), 3);
     ASSERT_EQ(records.size(), records2.size());
+}
 
+TEST(StorageTest, ValidHeaderCreation) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    TSDBHeader expectedHeader;
+    expectedHeader.magic[0] = 'T';
+    expectedHeader.magic[1] = 'S';
+    expectedHeader.magic[2] = 'D';
+    expectedHeader.magic[3] = 'B';
+    expectedHeader.version = 1;
+    expectedHeader.reserved[0] = 0;
+    expectedHeader.reserved[1] = 0;
+    expectedHeader.reserved[2] = 0;
+    expectedHeader.recordSize = sizeof(Record);
+
+    TSDBHeader actualHeader = s.getHeader();
+
+    EXPECT_EQ(actualHeader.magic[0], expectedHeader.magic[0]);
+    EXPECT_EQ(actualHeader.magic[1], expectedHeader.magic[1]);
+    EXPECT_EQ(actualHeader.magic[2], expectedHeader.magic[2]);
+    EXPECT_EQ(actualHeader.magic[3], expectedHeader.magic[3]);
+    EXPECT_EQ(actualHeader.version, expectedHeader.version);
+    EXPECT_EQ(actualHeader.reserved[0], expectedHeader.reserved[0]);
+    EXPECT_EQ(actualHeader.reserved[1], expectedHeader.reserved[1]);
+    EXPECT_EQ(actualHeader.reserved[2], expectedHeader.reserved[2]);
+    EXPECT_EQ(actualHeader.recordSize, expectedHeader.recordSize);
+}
+
+TEST(StorageTest, InvalidMagicNumberThrows) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    TSDBHeader badHeader = {'B', 'A', 'D', '!', 1, {0,0,0}, static_cast<uint16_t>(sizeof(Record))};
+    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
+    outFile.write(reinterpret_cast<const char*>(&badHeader), sizeof(TSDBHeader));
+    outFile.close();
+
+    try {
+        Storage s(filename);
+        FAIL() << "Expected std::runtime_error";
+    } catch (const std::runtime_error& e) {
+        EXPECT_STREQ(e.what(), "Invalid TSDB file magic number: testdb.tsdb");
+    } catch (...) {
+        FAIL() << "Expected std::runtime_error";
+    }
+}
+
+TEST(StorageTest, IncompatibleVersionThrows) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    TSDBHeader badHeader = {'T', 'S', 'D', 'B', 2, {0,0,0}, static_cast<uint16_t>(sizeof(Record))};
+    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
+    outFile.write(reinterpret_cast<const char*>(&badHeader), sizeof(TSDBHeader));
+    outFile.close();
+
+    try {
+        Storage s(filename);
+        FAIL() << "Expected std::runtime_error";
+    } catch (const std::runtime_error& e) {
+        EXPECT_STREQ(e.what(), "Unsupported TSDB file version: testdb.tsdb");
+    } catch (...) {
+        FAIL() << "Expected std::runtime_error";
+    }
+}
+
+TEST(StorageTest, InvalidRecordSizeThrows) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    TSDBHeader badHeader = {'T', 'S', 'D', 'B', 1, {0,0,0}, 12};
+    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
+    outFile.write(reinterpret_cast<const char*>(&badHeader), sizeof(TSDBHeader));
+    outFile.close();
+
+    try {
+        Storage s(filename);
+        FAIL() << "Expected std::runtime_error";
+    } catch (const std::runtime_error& e) {
+        EXPECT_STREQ(e.what(), "Record size mismatch: testdb.tsdb");
+    } catch (...) {
+        FAIL() << "Expected std::runtime_error";
+    }
 }
