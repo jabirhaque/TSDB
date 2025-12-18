@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo snap install cmake --classic
+          sudo apt-get update
+          sudo apt-get install -y g++ make libgtest-dev
+          
+          cd /usr/src/gtest
+          sudo cmake CMakeLists.txt
+          sudo make
+          sudo cp lib/*.a /usr/lib
+
+      - name: Run tests
+        run: |
+          mkdir -p build && cd build
+          cmake .. 
+          make
+          ctest --verbose
+          cd ..
+          rm -rf build
+
+      - name: Build production
+        run: |
+          mkdir -p build && cd build
+          cmake ..
+          cmake --build .
