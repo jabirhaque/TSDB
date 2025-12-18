@@ -1,6 +1,9 @@
 #include "Storage.hpp"
 #include <fstream>
 #include <sstream>
+#include <limits>
+#include <cstdint>
+
 
 
 Storage::Storage(const std::string& filename) : filename(filename)
