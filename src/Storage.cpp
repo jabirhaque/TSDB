@@ -126,3 +126,23 @@ std::vector<Record> Storage::readAll() const {
     inFile.close();
     return records;
 }
+
+std::optional<Record> Storage::getLastRecord() const
+{
+    std::ifstream inFile(filename, std::ios::binary);
+    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
+
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+
+    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+    if (dataSize == 0) return std::nullopt;
+    inFile.seekg(-static_cast<std::streamoff>(sizeof(Record)), std::ios::end);
+
+    Record last;
+    if (!inFile.read(reinterpret_cast<char*>(&last), sizeof(Record))) {
+        throw std::runtime_error("Failed to read last record: " + filename);
+    }
+
+    return last;
+}

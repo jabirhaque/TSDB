@@ -13,6 +13,7 @@ public:
     std::vector<Record> readAll() const;
     int64_t getLastTimestamp();
     TSDBHeader getHeader();
+    std::optional<Record> getLastRecord() const;
 
 private:
     std::string filename;
