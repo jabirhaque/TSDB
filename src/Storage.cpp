@@ -3,6 +3,7 @@
 #include <sstream>
 #include <limits>
 #include <cstdint>
+#include <optional>
 
 
 
@@ -15,12 +16,14 @@ Storage::Storage(const std::string& filename) : filename(filename)
 
         inFile.seekg(0, std::ios::end);
         std::streampos fileSize = inFile.tellg();
+
         if (fileSize < static_cast<std::streampos>(sizeof(TSDBHeader))) {
             throw std::runtime_error("File too small to contain valid TSDB header: " + filename);
         }
 
         TSDBHeader temporaryHeader;
         inFile.seekg(0, std::ios::beg);
+
         if (!inFile.read(reinterpret_cast<char*>(&temporaryHeader), sizeof(TSDBHeader))) {
             throw std::runtime_error("Failed to read TSDB header: " + filename);
         }
@@ -45,17 +48,6 @@ Storage::Storage(const std::string& filename) : filename(filename)
         if (dataSize % static_cast<std::streampos>(sizeof(Record)) != 0) {
             throw std::runtime_error("Corrupted TSDB file: misaligned record section");
         }
-
-        if (dataSize >= static_cast<std::streampos>(sizeof(Record))) {
-            inFile.seekg(-static_cast<std::streamoff>(sizeof(Record)), std::ios::end);
-
-            Record last;
-            if (!inFile.read(reinterpret_cast<char*>(&last), sizeof(Record))) {
-                throw std::runtime_error("Failed to read last record: " + filename);
-            }
-
-            lastTimestamp = last.timestamp;
-        }
     }
     else
     {
@@ -66,6 +58,11 @@ Storage::Storage(const std::string& filename) : filename(filename)
         }
         outFile.write(reinterpret_cast<const char*>(&header), sizeof(TSDBHeader));
         outFile.close();
+    }
+    std::optional<Record> lastRecord = getLastRecord();
+    if (lastRecord.has_value())
+    {
+        lastTimestamp = lastRecord->timestamp;
     }
 }
 

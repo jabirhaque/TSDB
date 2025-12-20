@@ -3,6 +3,7 @@
 #include "Record.hpp"
 #include "TSDBHeader.hpp"
 #include <vector>
+#include <optional>
 
 class Storage
 {
