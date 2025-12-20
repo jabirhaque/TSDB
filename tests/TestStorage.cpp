@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "../src/Storage.hpp"
 #include <fstream>
+#include <optional>
 
 TEST(StorageTest, AppendSingleRecord) {
     const char* filename = "testdb.txt";
@@ -213,4 +214,35 @@ TEST(StorageTest, InvalidRecordSizeThrows) {
     } catch (...) {
         FAIL() << "Expected std::runtime_error";
     }
+}
+
+TEST(StorageTest, GetLastRecord) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+
+    s.append(r1);
+    s.append(r2);
+
+    std::optional<Record> lastRecord = s.getLastRecord();
+
+    EXPECT_TRUE(lastRecord.has_value());
+    EXPECT_EQ(lastRecord->timestamp, 1100);
+    EXPECT_EQ(s.getLastTimestamp(), lastRecord->timestamp);
+}
+
+TEST(StorageTest, NoLastRecord) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::optional<Record> lastRecord = s.getLastRecord();
+
+    EXPECT_FALSE(lastRecord.has_value());
+    EXPECT_EQ(s.getLastTimestamp(), std::numeric_limits<int64_t>::min());
 }
