@@ -143,3 +143,23 @@ std::optional<Record> Storage::getLastRecord() const
 
     return last;
 }
+
+Record Storage::getRecord(int index)
+{
+    std::ifstream inFile(filename, std::ios::binary);
+    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
+
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+    size_t numRecords = dataSize / sizeof(Record);
+
+    if (index<0 || index >= static_cast<int>(numRecords)) throw std::out_of_range("Record index out of range");
+    inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
+
+    Record record;
+    if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record))) {
+        throw std::runtime_error("Failed to read record: " + filename);
+    }
+    return record;
+}

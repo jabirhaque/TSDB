@@ -246,3 +246,111 @@ TEST(StorageTest, NoLastRecord) {
     EXPECT_FALSE(lastRecord.has_value());
     EXPECT_EQ(s.getLastTimestamp(), std::numeric_limits<int64_t>::min());
 }
+
+TEST(StorageTest, GetRecordByIndex) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+    Record r3 {1200, 44.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    Record rec = s.getRecord(1);
+
+    EXPECT_EQ(rec.timestamp, 1100);
+    EXPECT_EQ(rec.value, 43.5);
+}
+
+TEST(StorageTest, GetFirstRecordByIndex) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+    Record r3 {1200, 44.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    Record rec = s.getRecord(0);
+
+    EXPECT_EQ(rec.timestamp, 1000);
+    EXPECT_EQ(rec.value, 42.0);
+}
+
+TEST(StorageTest, GetLastRecordByIndex) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+    Record r3 {1200, 44.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    Record rec = s.getRecord(2);
+
+    EXPECT_EQ(rec.timestamp, 1200);
+    EXPECT_EQ(rec.value, 44.0);
+}
+
+TEST(StorageTest, GetRecordByInvalidIndexThrows) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+    Record r3 {1200, 44.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    try {
+        s.getRecord(-1);
+        FAIL() << "Expected std::out_of_range";
+    } catch (const std::out_of_range& e) {
+        EXPECT_STREQ(e.what(), "Record index out of range");
+    } catch (...) {
+        FAIL() << "Expected std::out_of_range";
+    }
+}
+
+TEST(StorageTest, GetRecordByOutOfBoundsIndexThrows) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+    Record r3 {1200, 44.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    try {
+        s.getRecord(3);
+        FAIL() << "Expected std::out_of_range";
+    } catch (const std::out_of_range& e) {
+        EXPECT_STREQ(e.what(), "Record index out of range");
+    } catch (...) {
+        FAIL() << "Expected std::out_of_range";
+    }
+}

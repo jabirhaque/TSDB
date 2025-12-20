@@ -15,6 +15,7 @@ public:
     int64_t getLastTimestamp();
     TSDBHeader getHeader();
     std::optional<Record> getLastRecord() const;
+    Record getRecord(int index);
 
 private:
     std::string filename;
