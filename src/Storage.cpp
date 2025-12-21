@@ -66,12 +66,12 @@ Storage::Storage(const std::string& filename) : filename(filename)
     }
 }
 
-int64_t Storage::getLastTimestamp()
+int64_t Storage::getLastTimestamp() const
 {
     return lastTimestamp;
 }
 
-TSDBHeader Storage::getHeader()
+TSDBHeader Storage::getHeader() const
 {
     return header;
 }
@@ -144,7 +144,7 @@ std::optional<Record> Storage::getLastRecord() const
     return last;
 }
 
-Record Storage::getRecord(int index)
+Record Storage::getRecord(size_t index) const
 {
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
@@ -154,7 +154,7 @@ Record Storage::getRecord(int index)
     std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
     size_t numRecords = dataSize / sizeof(Record);
 
-    if (index<0 || index >= static_cast<int>(numRecords)) throw std::out_of_range("Record index out of range");
+    if (index >= static_cast<int>(numRecords)) throw std::out_of_range("Record index out of range");
     inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
 
     Record record;
@@ -162,4 +162,85 @@ Record Storage::getRecord(int index)
         throw std::runtime_error("Failed to read record: " + filename);
     }
     return record;
+}
+
+std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
+{
+    if (startTs > endTs) throw std::runtime_error("Invalid time range");
+
+    std::ifstream inFile(filename, std::ios::binary);
+    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
+
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+    size_t numRecords = dataSize / sizeof(Record);
+
+    std::optional<size_t> startIndex = lowestIndexGreaterThanTimeStamp(startTs, numRecords);
+    if (!startIndex.has_value()) return {};
+    std::optional<size_t> endIndex = greatestIndexLessThanTimeStamp(endTs, numRecords);
+    if (!endIndex.has_value()) return {};
+
+    if (startIndex.value()>endIndex.value()) return {};
+
+    size_t recordCount = endIndex.value()-startIndex.value()+1;
+    std::vector<Record> records(recordCount);
+
+    inFile.seekg(static_cast<std::streampos>(sizeof(TSDBHeader))+static_cast<std::streampos>(startIndex.value())*static_cast<std::streampos>(sizeof(Record)), std::ios::beg);
+
+    if (!inFile.read(reinterpret_cast<char*>(records.data()), recordCount*static_cast<std::streampos>(sizeof(Record)))) {;
+        throw std::runtime_error("Failed to read records from file: " + filename);
+    }
+
+    inFile.close();
+    return records;
+}
+
+std::optional<size_t> Storage::lowestIndexGreaterThanTimeStamp(int64_t timestamp, size_t numRecords) const
+{
+    if (numRecords == 0) return std::nullopt;
+
+    size_t left = 0;
+    size_t right = numRecords - 1;
+    std::optional<size_t> result;
+
+    while (left <= right) {
+        size_t mid = left + (right - left) / 2;
+        Record midRecord = getRecord(mid);
+
+        if (midRecord.timestamp >= timestamp) {
+            result = mid;
+            if (mid == 0) break;
+            right = mid - 1;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    return result;
+}
+
+
+std::optional<size_t> Storage::greatestIndexLessThanTimeStamp(int64_t timestamp, size_t numRecords) const
+{
+    if (numRecords == 0) return std::nullopt;
+
+    size_t left = 0;
+    size_t right = numRecords - 1;
+    std::optional<size_t> result;
+
+    while (left <= right) {
+        size_t mid = left + (right - left) / 2;
+        Record midRecord = getRecord(mid);
+
+        if (midRecord.timestamp <= timestamp) {
+            result = mid;
+            left = mid + 1;
+        } else {
+            if (mid == 0) break;
+            right = mid - 1;
+        }
+    }
+
+    return result;
 }
