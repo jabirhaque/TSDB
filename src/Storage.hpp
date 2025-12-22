@@ -3,6 +3,7 @@
 #include "Record.hpp"
 #include "TSDBHeader.hpp"
 #include <vector>
+#include <optional>
 
 class Storage
 {
@@ -11,8 +12,11 @@ public:
 
     bool append(const Record& r);
     std::vector<Record> readAll() const;
-    int64_t getLastTimestamp();
-    TSDBHeader getHeader();
+    int64_t getLastTimestamp() const;
+    TSDBHeader getHeader() const;
+    std::optional<Record> getLastRecord() const;
+    Record getRecord(size_t index) const;
+    std::vector<Record> readRange(int64_t startTs, int64_t endTs) const;
 
 private:
     std::string filename;
