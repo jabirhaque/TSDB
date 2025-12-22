@@ -17,8 +17,6 @@ public:
     std::optional<Record> getLastRecord() const;
     Record getRecord(size_t index) const;
     std::vector<Record> readRange(int64_t startTs, int64_t endTs) const;
-    std::optional<size_t> lowestIndexGreaterThanTimeStamp(int64_t timestamp, size_t numRecords) const;
-    std::optional<size_t> greatestIndexLessThanTimeStamp(int64_t timestamp, size_t numRecords) const;
 
 private:
     std::string filename;
