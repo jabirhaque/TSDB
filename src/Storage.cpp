@@ -14,6 +14,7 @@ Storage::Storage(const std::string& filename) : filename(filename)
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
 
+
         inFile.seekg(0, std::ios::end);
         std::streampos fileSize = inFile.tellg();
 
