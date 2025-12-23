@@ -10,7 +10,7 @@ class Storage
 public:
     explicit Storage(const std::string& filename);
 
-    bool append(const Record& r);
+    bool append(Record r);
     std::vector<Record> readAll() const;
     int64_t getLastTimestamp() const;
     TSDBHeader getHeader() const;

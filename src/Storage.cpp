@@ -4,6 +4,7 @@
 #include <limits>
 #include <cstdint>
 #include <optional>
+#include <zlib.h>
 
 
 
@@ -77,9 +78,14 @@ TSDBHeader Storage::getHeader() const
     return header;
 }
 
-bool Storage::append(const Record& r)
+bool Storage::append(Record r)
 {
     if (r.timestamp <= lastTimestamp) return false;
+
+    uint32_t crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
+    r.crc = crc;
 
     std::ofstream outFile(filename, std::ios::binary | std::ios::app);
     if (!outFile.is_open()) {
@@ -119,6 +125,17 @@ std::vector<Record> Storage::readAll() const {
 
     if (!inFile.read(reinterpret_cast<char*>(records.data()), dataSize)) {;
         throw std::runtime_error("Failed to read records from file: " + filename);
+    }
+
+    for (Record& r: records)
+    {
+        uint32_t expected = crc32(0L, Z_NULL, 0);
+        expected = crc32(expected, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
+        expected = crc32(expected, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
+
+        if (expected != static_cast<uint32_t>(r.crc)) {
+            throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(r.timestamp));
+        }
     }
 
     inFile.close();
