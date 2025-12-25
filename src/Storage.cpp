@@ -82,10 +82,7 @@ bool Storage::append(Record r)
 {
     if (r.timestamp <= lastTimestamp) return false;
 
-    uint32_t crc = crc32(0L, Z_NULL, 0);
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
-    r.crc = crc;
+    r.crc = computeCRC(r);
 
     std::ofstream outFile(filename, std::ios::binary | std::ios::app);
     if (!outFile.is_open()) {
@@ -98,6 +95,14 @@ bool Storage::append(Record r)
 
     lastTimestamp = r.timestamp;
     return true;
+}
+
+uint32_t Storage::computeCRC(const Record& r) const
+{
+    uint32_t crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
+    return crc;
 }
 
 
@@ -127,11 +132,9 @@ std::vector<Record> Storage::readAll() const {
         throw std::runtime_error("Failed to read records from file: " + filename);
     }
 
-    for (Record& r: records)
+    for (const Record& r: records)
     {
-        uint32_t expected = crc32(0L, Z_NULL, 0);
-        expected = crc32(expected, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
-        expected = crc32(expected, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
+        uint32_t expected = computeCRC(r);
 
         if (expected != static_cast<uint32_t>(r.crc)) {
             throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(r.timestamp));
@@ -159,6 +162,12 @@ std::optional<Record> Storage::getLastRecord() const
         throw std::runtime_error("Failed to read last record: " + filename);
     }
 
+    uint32_t expected = computeCRC(last);
+
+    if (expected != static_cast<uint32_t>(last.crc)) {
+        throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(last.timestamp));
+    }
+
     return last;
 }
 
@@ -179,6 +188,13 @@ Record Storage::getRecord(size_t index) const
     if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record))) {
         throw std::runtime_error("Failed to read record: " + filename);
     }
+
+    uint32_t expected = computeCRC(record);
+
+    if (expected != static_cast<uint32_t>(record.crc)) {
+        throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
+    }
+
     return record;
 }
 

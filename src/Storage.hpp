@@ -17,6 +17,7 @@ public:
     std::optional<Record> getLastRecord() const;
     Record getRecord(size_t index) const;
     std::vector<Record> readRange(int64_t startTs, int64_t endTs) const;
+    uint32_t computeCRC(const Record& r) const;
 
 private:
     std::string filename;
