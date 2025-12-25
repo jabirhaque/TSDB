@@ -5,17 +5,31 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(TSDB main.cpp src/Storage.cpp)
-
-enable_testing()
+add_executable(TSDB
+        main.cpp
+        src/Storage.cpp
+)
 
 add_executable(TSDB_tests
         tests/TestStorage.cpp
         src/Storage.cpp
 )
 
+find_package(ZLIB REQUIRED)
 find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
-target_link_libraries(TSDB_tests ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES} pthread)
 
+target_link_libraries(TSDB
+        PRIVATE
+        ZLIB::ZLIB
+)
+
+target_link_libraries(TSDB_tests
+        PRIVATE
+        ZLIB::ZLIB
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+)
+
+enable_testing()
 add_test(NAME StorageTests COMMAND TSDB_tests)

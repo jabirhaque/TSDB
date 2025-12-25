@@ -10,13 +10,14 @@ class Storage
 public:
     explicit Storage(const std::string& filename);
 
-    bool append(const Record& r);
+    bool append(Record r);
     std::vector<Record> readAll() const;
     int64_t getLastTimestamp() const;
     TSDBHeader getHeader() const;
     std::optional<Record> getLastRecord() const;
     Record getRecord(size_t index) const;
     std::vector<Record> readRange(int64_t startTs, int64_t endTs) const;
+    uint32_t computeCRC(const Record& r) const;
 
 private:
     std::string filename;

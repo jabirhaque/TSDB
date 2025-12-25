@@ -570,3 +570,42 @@ TEST(StorageTest, ReadRangeInvalidRangeThrows) {
         FAIL() << "Expected std::runtime_error";
     }
 }
+
+TEST(StorageTest, CorrupedRecordThrows) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1100, 43.5};
+
+    s.append(r1);
+    s.append(r2);
+
+    {
+        std::fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);
+        ASSERT_TRUE(file.is_open());
+
+        std::streamoff crcOffset =
+            sizeof(TSDBHeader) +
+            sizeof(int64_t) +
+            sizeof(double);
+
+        file.seekp(crcOffset, std::ios::beg);
+
+        uint32_t badCrc = 0xDEADBEEF;
+        file.write(reinterpret_cast<const char*>(&badCrc), sizeof(badCrc));
+
+        file.close();
+    }
+
+    try {
+        auto records = s.readAll();
+        FAIL() << "Expected std::runtime_error";
+    } catch (const std::runtime_error& e) {
+        EXPECT_STREQ(e.what(), "Data corruption detected in record with timestamp: 1000");
+    } catch (...) {
+        FAIL() << "Expected std::runtime_error";
+    }
+}
