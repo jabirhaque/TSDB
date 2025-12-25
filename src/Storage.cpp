@@ -40,11 +40,6 @@ Storage::Storage(const std::string& filename) : filename(filename)
     }
 }
 
-TSDBHeader Storage::getHeader() const
-{
-    return header;
-}
-
 bool Storage::append(Record r)
 {
     if (r.timestamp <= lastTimestamp) return false;
@@ -203,6 +198,16 @@ Record Storage::getRecord(size_t index) const
     return record;
 }
 
+int64_t Storage::getLastTimestamp() const
+{
+    return lastTimestamp;
+}
+
+TSDBHeader Storage::getHeader() const
+{
+    return header;
+}
+
 void Storage::validateFile()
 {
     std::ifstream inFile(filename, std::ios::binary);
@@ -251,7 +256,30 @@ uint32_t Storage::computeCRC(const Record& r) const
     return crc;
 }
 
-int64_t Storage::getLastTimestamp() const
+void Storage::buildSparseIndex()
 {
-    return lastTimestamp;
+    std::ifstream inFile(filename, std::ios::binary);
+    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
+
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+    size_t numRecords = dataSize / sizeof(Record);
+
+    size_t index = 0;
+
+    while (index<numRecords)
+    {
+        inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
+        int64_t ts;
+        if (!inFile.read(reinterpret_cast<char*>(&ts), sizeof(ts))) {
+            throw std::runtime_error("Failed to read timestamp from record: " + filename);
+        }
+        IndexEntry indexEntry;
+        indexEntry.timestamp = ts;
+        indexEntry.recordIndex = index;
+        sparseIndex.push_back(indexEntry);
+
+        index += sparseIndexStep;
+    }
 }

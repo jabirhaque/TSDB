@@ -2,6 +2,7 @@
 #include <string>
 #include "Record.hpp"
 #include "TSDBHeader.hpp"
+#include "IndexEntry.hpp"
 #include <vector>
 #include <optional>
 
@@ -10,9 +11,6 @@ class Storage
 public:
     //constructor
     explicit Storage(const std::string& filename);
-
-    //header functions
-    TSDBHeader getHeader() const;
 
     //write functions
     bool append(Record r);
@@ -23,16 +21,19 @@ public:
     std::optional<Record> getLastRecord() const;
     Record getRecord(size_t index) const;
 
-    //helper functions
-    void validateFile();
-    uint32_t computeCRC(const Record& r) const;
-
     //getters
     int64_t getLastTimestamp() const;
+    TSDBHeader getHeader() const;
 
 private:
     std::string filename;
-    int64_t lastTimestamp;
     TSDBHeader header;
+    int64_t lastTimestamp;
+
     size_t sparseIndexStep;
+    std::vector<IndexEntry> sparseIndex;
+
+    void validateFile();
+    uint32_t computeCRC(const Record& r) const;
+    void buildSparseIndex();
 };
