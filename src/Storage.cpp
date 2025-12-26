@@ -22,6 +22,9 @@ Storage::Storage(const std::string& filename) : filename(filename)
         inFile.read(reinterpret_cast<char*>(&temporaryHeader), sizeof(TSDBHeader));
 
         header = temporaryHeader;
+        inFile.seekg(0, std::ios::end);
+        std::streampos dataSize = (inFile.tellg() - static_cast<std::streampos>(sizeof(TSDBHeader)))/static_cast<std::streampos>(sizeof(Record));
+        recordCount = static_cast<size_t>(dataSize);
     }
     else
     {
@@ -32,6 +35,7 @@ Storage::Storage(const std::string& filename) : filename(filename)
         }
         outFile.write(reinterpret_cast<const char*>(&header), sizeof(TSDBHeader));
         outFile.close();
+        recordCount = 0;
     }
     std::optional<Record> lastRecord = getLastRecord();
     if (lastRecord.has_value())
@@ -58,6 +62,14 @@ bool Storage::append(Record r)
     outFile.close();
 
     lastTimestamp = r.timestamp;
+    if (recordCount % sparseIndexStep == 0)
+    {
+        IndexEntry indexEntry;
+        indexEntry.timestamp = r.timestamp;
+        indexEntry.recordIndex = recordCount;
+        sparseIndex.push_back(indexEntry);
+    }
+    recordCount++;
     return true;
 }
 
@@ -251,7 +263,6 @@ void Storage::validateFile()
         if (temporaryHeader.recordSize != sizeof(Record)) {
             throw std::runtime_error("Record size mismatch: " + filename);
         }
-
         std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
 
         if (dataSize % static_cast<std::streampos>(sizeof(Record)) != 0) {

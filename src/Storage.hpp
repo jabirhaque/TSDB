@@ -29,6 +29,7 @@ private:
     std::string filename;
     TSDBHeader header;
     int64_t lastTimestamp;
+    size_t recordCount;
 
     size_t sparseIndexStep;
     std::vector<IndexEntry> sparseIndex;
