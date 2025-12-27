@@ -11,7 +11,7 @@
 Storage::Storage(const std::string& filename) : filename(filename)
 {
     validateFile();
-
+    sparseIndexStep = 4; //every 4th record
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
     std::ifstream inFile(filename, std::ios::binary);
@@ -230,6 +230,21 @@ int64_t Storage::getLastTimestamp() const
 TSDBHeader Storage::getHeader() const
 {
     return header;
+}
+
+size_t Storage::getRecordCount() const
+{
+    return recordCount;
+}
+
+size_t Storage::getSparseIndexStep() const
+{
+    return sparseIndexStep;
+}
+
+const std::vector<IndexEntry>& Storage::getSparseIndex() const
+{
+    return sparseIndex;
 }
 
 void Storage::validateFile()

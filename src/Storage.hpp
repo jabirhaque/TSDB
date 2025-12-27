@@ -24,6 +24,9 @@ public:
     //getters
     int64_t getLastTimestamp() const;
     TSDBHeader getHeader() const;
+    size_t getRecordCount() const;
+    size_t getSparseIndexStep() const;
+    const std::vector<IndexEntry>& getSparseIndex() const;
 
 private:
     std::string filename;
