@@ -195,11 +195,8 @@ Record Storage::getRecord(size_t index) const
     if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
     inFile.seekg(0, std::ios::end);
-    std::streampos fileSize = inFile.tellg();
-    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-    size_t numRecords = dataSize / sizeof(Record);
 
-    if (index >= static_cast<int>(numRecords)) throw std::out_of_range("Record index out of range");
+    if (index >= static_cast<int>(recordCount)) throw std::out_of_range("Record index out of range");
     inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
 
     Record record;
@@ -296,13 +293,10 @@ void Storage::buildSparseIndex()
     if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
     inFile.seekg(0, std::ios::end);
-    std::streampos fileSize = inFile.tellg();
-    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-    size_t numRecords = dataSize / sizeof(Record);
 
     size_t index = 0;
 
-    while (index<numRecords)
+    while (index<recordCount)
     {
         inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
         int64_t ts;
