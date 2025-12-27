@@ -10,18 +10,12 @@
 
 Storage::Storage(const std::string& filename) : filename(filename)
 {
-    validateFile();
     sparseIndexStep = 4; //every 4th record
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
-        TSDBHeader temporaryHeader;
-        inFile.seekg(0, std::ios::beg);
-
-        inFile.read(reinterpret_cast<char*>(&temporaryHeader), sizeof(TSDBHeader));
-
-        header = temporaryHeader;
+        header = validateAndReadHeader(inFile);
         inFile.seekg(0, std::ios::end);
         std::streampos dataSize = (inFile.tellg() - static_cast<std::streampos>(sizeof(TSDBHeader)))/static_cast<std::streampos>(sizeof(Record));
         recordCount = static_cast<size_t>(dataSize);
@@ -247,9 +241,8 @@ const std::vector<IndexEntry>& Storage::getSparseIndex() const
     return sparseIndex;
 }
 
-void Storage::validateFile()
+TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile)
 {
-    std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
 
         inFile.seekg(0, std::ios::end);
@@ -283,7 +276,10 @@ void Storage::validateFile()
         if (dataSize % static_cast<std::streampos>(sizeof(Record)) != 0) {
             throw std::runtime_error("Corrupted TSDB file: misaligned record section");
         }
+
+        return temporaryHeader;
     }
+    throw std::runtime_error("File doesn't exist: " + filename);
 }
 
 uint32_t Storage::computeCRC(const Record& r) const
