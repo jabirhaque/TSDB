@@ -10,46 +10,15 @@
 
 Storage::Storage(const std::string& filename) : filename(filename)
 {
+    sparseIndexStep = 4; //every 4th record
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
-
-
+        header = validateAndReadHeader(inFile);
         inFile.seekg(0, std::ios::end);
-        std::streampos fileSize = inFile.tellg();
-
-        if (fileSize < static_cast<std::streampos>(sizeof(TSDBHeader))) {
-            throw std::runtime_error("File too small to contain valid TSDB header: " + filename);
-        }
-
-        TSDBHeader temporaryHeader;
-        inFile.seekg(0, std::ios::beg);
-
-        if (!inFile.read(reinterpret_cast<char*>(&temporaryHeader), sizeof(TSDBHeader))) {
-            throw std::runtime_error("Failed to read TSDB header: " + filename);
-        }
-
-        if (temporaryHeader.magic[0] != 'T' || temporaryHeader.magic[1] != 'S' ||
-            temporaryHeader.magic[2] != 'D' || temporaryHeader.magic[3] != 'B') {
-            throw std::runtime_error("Invalid TSDB file magic number: " + filename);
-        }
-
-        if (temporaryHeader.version != 1) {
-            throw std::runtime_error("Unsupported TSDB file version: " + filename);
-        }
-
-        if (temporaryHeader.recordSize != sizeof(Record)) {
-            throw std::runtime_error("Record size mismatch: " + filename);
-        }
-
-        header = temporaryHeader;
-
-        std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-
-        if (dataSize % static_cast<std::streampos>(sizeof(Record)) != 0) {
-            throw std::runtime_error("Corrupted TSDB file: misaligned record section");
-        }
+        std::streampos dataSize = (inFile.tellg() - static_cast<std::streampos>(sizeof(TSDBHeader)))/static_cast<std::streampos>(sizeof(Record));
+        recordCount = static_cast<size_t>(dataSize);
     }
     else
     {
@@ -60,22 +29,15 @@ Storage::Storage(const std::string& filename) : filename(filename)
         }
         outFile.write(reinterpret_cast<const char*>(&header), sizeof(TSDBHeader));
         outFile.close();
+        recordCount = 0;
     }
     std::optional<Record> lastRecord = getLastRecord();
     if (lastRecord.has_value())
     {
         lastTimestamp = lastRecord->timestamp;
     }
-}
 
-int64_t Storage::getLastTimestamp() const
-{
-    return lastTimestamp;
-}
-
-TSDBHeader Storage::getHeader() const
-{
-    return header;
+    buildSparseIndex();
 }
 
 bool Storage::append(Record r)
@@ -94,17 +56,16 @@ bool Storage::append(Record r)
     outFile.close();
 
     lastTimestamp = r.timestamp;
+    if (recordCount % sparseIndexStep == 0)
+    {
+        IndexEntry indexEntry;
+        indexEntry.timestamp = r.timestamp;
+        indexEntry.recordIndex = recordCount;
+        sparseIndex.push_back(indexEntry);
+    }
+    recordCount++;
     return true;
 }
-
-uint32_t Storage::computeCRC(const Record& r) const
-{
-    uint32_t crc = crc32(0L, Z_NULL, 0);
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
-    return crc;
-}
-
 
 std::vector<Record> Storage::readAll() const {
     std::ifstream inFile(filename, std::ios::binary);
@@ -145,6 +106,67 @@ std::vector<Record> Storage::readAll() const {
     return records;
 }
 
+std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
+{
+    if (startTs > endTs) throw std::runtime_error("Invalid time range");
+
+    if (startTs > lastTimestamp) return {};
+
+    if (sparseIndex.empty()) return {};
+
+    if (endTs < sparseIndex[0].timestamp) return {};
+
+    startTs = std::max(sparseIndex[0].timestamp, startTs);
+    endTs = std::min(lastTimestamp, endTs);
+
+    size_t left = 0;
+    size_t right = sparseIndex.size()-1;
+    size_t lastIndex = sparseIndex.size();
+    while (left <= right)
+    {
+        size_t mid = left + (right - left) / 2;
+        if (sparseIndex[mid].timestamp <= startTs)
+        {
+            lastIndex = mid;
+            left = mid + 1;
+        }
+        else
+        {
+            if (mid == 0) break;
+            right = mid - 1;
+        }
+    }
+
+    if (lastIndex == sparseIndex.size()) return {};
+    size_t startRecordIndex = sparseIndex[lastIndex].recordIndex;
+
+    std::ifstream inFile(filename, std::ios::binary);
+    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
+
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+    size_t numRecords = dataSize / sizeof(Record);
+
+    std::vector<Record> records;
+    inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(startRecordIndex*sizeof(Record)), std::ios::beg);
+    for (size_t i=startRecordIndex; i<numRecords; i++)
+    {
+        Record record;
+        if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record))) {
+            throw std::runtime_error("Failed to read records from file: " + filename);
+        }
+        if (record.timestamp > endTs) break;
+        if (record.timestamp < startTs) continue;
+        uint32_t expected = computeCRC(record);
+        if (expected != static_cast<uint32_t>(record.crc)) {
+            throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
+        }
+        records.push_back(record);
+    }
+    return records;
+}
+
 std::optional<Record> Storage::getLastRecord() const
 {
     std::ifstream inFile(filename, std::ios::binary);
@@ -177,11 +199,8 @@ Record Storage::getRecord(size_t index) const
     if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
     inFile.seekg(0, std::ios::end);
-    std::streampos fileSize = inFile.tellg();
-    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-    size_t numRecords = dataSize / sizeof(Record);
 
-    if (index >= static_cast<int>(numRecords)) throw std::out_of_range("Record index out of range");
+    if (index >= static_cast<int>(recordCount)) throw std::out_of_range("Record index out of range");
     inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
 
     Record record;
@@ -198,49 +217,101 @@ Record Storage::getRecord(size_t index) const
     return record;
 }
 
-std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
+int64_t Storage::getLastTimestamp() const
 {
-    if (startTs > endTs) throw std::runtime_error("Invalid time range");
+    return lastTimestamp;
+}
 
-    std::vector<Record> records = readAll();
+TSDBHeader Storage::getHeader() const
+{
+    return header;
+}
 
-    if (records.size() == 0) return {};
+size_t Storage::getRecordCount() const
+{
+    return recordCount;
+}
 
-    size_t left = 0;
-    size_t right = records.size() - 1;
-    std::optional<size_t> startIndex;
+size_t Storage::getSparseIndexStep() const
+{
+    return sparseIndexStep;
+}
 
-    while (left <= right)
-    {
-        size_t mid = left + (right - left) / 2;
-        if (records[mid].timestamp >= startTs) {
-            startIndex = mid;
-            if (mid == 0) break;
-            right = mid - 1;
-        } else {
-            left = mid + 1;
+const std::vector<IndexEntry>& Storage::getSparseIndex() const
+{
+    return sparseIndex;
+}
+
+TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile)
+{
+    if (inFile.is_open()) {
+
+        inFile.seekg(0, std::ios::end);
+        std::streampos fileSize = inFile.tellg();
+
+        if (fileSize < static_cast<std::streampos>(sizeof(TSDBHeader))) {
+            throw std::runtime_error("File too small to contain valid TSDB header: " + filename);
         }
-    }
 
-    if (!startIndex.has_value()) return {};
+        TSDBHeader temporaryHeader;
+        inFile.seekg(0, std::ios::beg);
 
-    left = 0;
-    right = records.size() - 1;
-    std::optional<size_t> endIndex;
-
-    while (left <= right)
-    {
-        size_t mid = left + (right - left) / 2;
-        if (records[mid].timestamp <= endTs) {
-            endIndex = mid;
-            left = mid + 1;
-        } else {
-            if (mid == 0) break;
-            right = mid - 1;
+        if (!inFile.read(reinterpret_cast<char*>(&temporaryHeader), sizeof(TSDBHeader))) {
+            throw std::runtime_error("Failed to read TSDB header: " + filename);
         }
+
+        if (temporaryHeader.magic[0] != 'T' || temporaryHeader.magic[1] != 'S' ||
+            temporaryHeader.magic[2] != 'D' || temporaryHeader.magic[3] != 'B') {
+            throw std::runtime_error("Invalid TSDB file magic number: " + filename);
+            }
+
+        if (temporaryHeader.version != 1) {
+            throw std::runtime_error("Unsupported TSDB file version: " + filename);
+        }
+
+        if (temporaryHeader.recordSize != sizeof(Record)) {
+            throw std::runtime_error("Record size mismatch: " + filename);
+        }
+        std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+
+        if (dataSize % static_cast<std::streampos>(sizeof(Record)) != 0) {
+            throw std::runtime_error("Corrupted TSDB file: misaligned record section");
+        }
+
+        return temporaryHeader;
     }
+    throw std::runtime_error("File doesn't exist: " + filename);
+}
 
-    if (!endIndex.has_value() || endIndex.value() < startIndex.value()) return {};
+uint32_t Storage::computeCRC(const Record& r) const
+{
+    uint32_t crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
+    return crc;
+}
 
-    return std::vector<Record>(records.begin() + startIndex.value(), records.begin() + endIndex.value() + 1);
+void Storage::buildSparseIndex()
+{
+    std::ifstream inFile(filename, std::ios::binary);
+    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
+
+    inFile.seekg(0, std::ios::end);
+
+    size_t index = 0;
+
+    while (index<recordCount)
+    {
+        inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
+        int64_t ts;
+        if (!inFile.read(reinterpret_cast<char*>(&ts), sizeof(ts))) {
+            throw std::runtime_error("Failed to read timestamp from record: " + filename);
+        }
+        IndexEntry indexEntry;
+        indexEntry.timestamp = ts;
+        indexEntry.recordIndex = index;
+        sparseIndex.push_back(indexEntry);
+
+        index += sparseIndexStep;
+    }
 }
