@@ -110,9 +110,14 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
 {
     if (startTs > endTs) throw std::runtime_error("Invalid time range");
 
-    if (lastTimestamp < startTs) return {};
+    if (startTs > lastTimestamp) return {};
 
     if (sparseIndex.empty()) return {};
+
+    if (endTs < sparseIndex[0].timestamp) return {};
+
+    startTs = std::max(sparseIndex[0].timestamp, startTs);
+    endTs = std::min(lastTimestamp, endTs);
 
     size_t left = 0;
     size_t right = sparseIndex.size()-1;
@@ -144,10 +149,9 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     size_t numRecords = dataSize / sizeof(Record);
 
     std::vector<Record> records;
-
+    inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(startRecordIndex*sizeof(Record)), std::ios::beg);
     for (size_t i=startRecordIndex; i<numRecords; i++)
     {
-        inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(i*sizeof(Record)), std::ios::beg);
         Record record;
         if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record))) {
             throw std::runtime_error("Failed to read records from file: " + filename);
