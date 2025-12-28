@@ -331,6 +331,48 @@ TEST(StorageTest, GetRecordByOutOfBoundsIndexThrows) {
     }
 }
 
+TEST(StorageTest, SparseIndexTest) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+    ASSERT_EQ(s.getSparseIndexStep(), 4);
+    ASSERT_TRUE(s.getSparseIndex().empty());
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    const std::vector<IndexEntry>& sparseIndex = s.getSparseIndex();
+    ASSERT_EQ(s.getSparseIndexStep(), 4);
+    ASSERT_EQ(sparseIndex.size(), 2);
+    ASSERT_EQ(sparseIndex[0].timestamp, 1000);
+    ASSERT_EQ(sparseIndex[0].recordIndex, 0);
+    ASSERT_EQ(sparseIndex[1].timestamp, 1400);
+    ASSERT_EQ(sparseIndex[1].recordIndex, 4);
+
+    Storage s2(filename);
+    const std::vector<IndexEntry>& sparseIndex2 = s2.getSparseIndex();
+    ASSERT_EQ(s2.getSparseIndexStep(), 4);
+    ASSERT_EQ(sparseIndex2.size(), 2);
+    ASSERT_EQ(sparseIndex2[0].timestamp, 1000);
+    ASSERT_EQ(sparseIndex2[0].recordIndex, 0);
+    ASSERT_EQ(sparseIndex2[1].timestamp, 1400);
+    ASSERT_EQ(sparseIndex2[1].recordIndex, 4);
+}
+
 TEST(StorageTest, ReadRangeInclusiveBothEnds) {
     const char* filename = "testdb.txt";
     std::remove(filename);
@@ -527,6 +569,180 @@ TEST(StorageTest, ReadRangeOutOfRangeWithin) {
 
     std::vector<Record> records = s.readRange(1325, 1375);
     ASSERT_EQ(records.size(), 0);
+}
+
+TEST(StorageTest, ReadRangeLeftOnTheBoundary) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    std::vector<Record> records = s.readRange(1000, 1400);
+    ASSERT_EQ(records.size(), 5);
+    for (int i=0; i<5; ++i) {
+        EXPECT_EQ(records[i].timestamp, 1000 + i*100);
+        EXPECT_EQ(records[i].value, 40.0 + i);
+    }
+}
+
+TEST(StorageTest, ReadRangeLeftFallsOut) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0}; // here
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0}; // here
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    std::vector<Record> records = s.readRange(900, 1400);
+    ASSERT_EQ(records.size(), 5);
+    for (int i=0; i<5; ++i) {
+        EXPECT_EQ(records[i].timestamp, 1000 + i*100);
+        EXPECT_EQ(records[i].value, 40.0 + i);
+    }
+}
+
+TEST(StorageTest, ReadRangeRightOnTheBoundary) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    std::vector<Record> records = s.readRange(1100, 1600);
+    ASSERT_EQ(records.size(), 6);
+    for (int i=0; i<6; ++i) {
+        EXPECT_EQ(records[i].timestamp, 1100 + i*100);
+        EXPECT_EQ(records[i].value, 41.0 + i);
+    }
+}
+
+TEST(StorageTest, ReadRangeRightFallsOut) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    std::vector<Record> records = s.readRange(1100, 1700);
+    ASSERT_EQ(records.size(), 6);
+    for (int i=0; i<6; ++i) {
+        EXPECT_EQ(records[i].timestamp, 1100 + i*100);
+        EXPECT_EQ(records[i].value, 41.0 + i);
+    }
+}
+
+TEST(StorageTest, ReadRangeSingleRecord) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    std::vector<Record> records = s.readRange(1100, 1100);
+    ASSERT_EQ(records.size(), 1);
+    ASSERT_EQ(records[0].timestamp, 1100);
+    ASSERT_EQ(records[0].value, 41.0);
+}
+
+TEST(StorageTest, ReadRangeSingleRecordNoResult) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    std::vector<Record> records = s.readRange(1150, 1150);
+    ASSERT_TRUE(records.empty());
 }
 
 TEST(StorageTest, ReadRangeEmptyFile) {
