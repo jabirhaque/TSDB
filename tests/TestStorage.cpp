@@ -825,3 +825,44 @@ TEST(StorageTest, CorrupedRecordThrows) {
         FAIL() << "Expected std::runtime_error";
     }
 }
+
+TEST(StorageTest, RecoveryFromCorruptedRecord) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 40.0};
+    Record r2 {1100, 41.0};
+    Record r3 {1200, 42.0};
+    Record r4 {1300, 43.0};
+    Record r5 {1400, 44.0};
+    Record r6 {1500, 45.0};
+    Record r7 {1600, 46.0};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+
+    Record r {1700, 47.0};
+
+    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
+    if (!outFile.is_open()) {
+        throw std::runtime_error("Failed to open file for writing");
+    }
+
+    outFile.write(reinterpret_cast<const char*>(&r.timestamp), sizeof(r.timestamp));
+
+    outFile.close();
+
+    Storage s2(filename);
+
+    std::vector<Record> records = s2.readAll();
+    ASSERT_EQ(records.size(), 7);
+    ASSERT_EQ(s2.getRecordCount(), 7);
+    ASSERT_EQ(records[6].timestamp, 1600);
+}
