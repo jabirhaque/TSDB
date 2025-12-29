@@ -5,20 +5,20 @@
 #include <cstdint>
 #include <optional>
 #include <zlib.h>
-
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdexcept>
 
 
 Storage::Storage(const std::string& filename) : filename(filename)
 {
-    sparseIndexStep = 4; //every 4th record
+    sparseIndexStep = 4;
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
         header = validateAndReadHeader(inFile);
-        inFile.seekg(0, std::ios::end);
-        std::streampos dataSize = (inFile.tellg() - static_cast<std::streampos>(sizeof(TSDBHeader)))/static_cast<std::streampos>(sizeof(Record));
-        recordCount = static_cast<size_t>(dataSize);
+        recordCount = recoverPartialWriteAndReturnRecordCount(inFile);
     }
     else
     {
@@ -272,15 +272,39 @@ TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile)
         if (temporaryHeader.recordSize != sizeof(Record)) {
             throw std::runtime_error("Record size mismatch: " + filename);
         }
-        std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-
-        if (dataSize % static_cast<std::streampos>(sizeof(Record)) != 0) {
-            throw std::runtime_error("Corrupted TSDB file: misaligned record section");
-        }
 
         return temporaryHeader;
     }
     throw std::runtime_error("File doesn't exist: " + filename);
+}
+
+size_t Storage::recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile)
+{
+    inFile.seekg(0, std::ios::end);
+    std::streampos fileSize = inFile.tellg();
+    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
+    size_t count = dataSize/static_cast<std::streampos>(sizeof(Record));
+    std::streampos remainder = dataSize % static_cast<std::streampos>(sizeof(Record));
+
+    if (remainder == 0) return count;
+
+    std::streamoff newFileSize = fileSize - remainder;
+
+    inFile.close();
+
+    int fd = ::open(filename.c_str(), O_WRONLY);
+    if (fd == -1) {
+        throw std::runtime_error("Failed to open file for truncation");
+    }
+
+    if (::ftruncate(fd, newFileSize) != 0) {
+        ::close(fd);
+        throw std::runtime_error("Failed to truncate TSDB file");
+    }
+
+    ::close(fd);
+
+    return count;
 }
 
 uint32_t Storage::computeCRC(const Record& r) const

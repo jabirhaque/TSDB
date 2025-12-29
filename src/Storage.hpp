@@ -37,7 +37,8 @@ private:
     size_t sparseIndexStep;
     std::vector<IndexEntry> sparseIndex;
 
-    TSDBHeader validateAndReadHeader(std::ifstream& file);
+    TSDBHeader validateAndReadHeader(std::ifstream& inFile);
+    size_t recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile);
     uint32_t computeCRC(const Record& r) const;
     void buildSparseIndex();
 };
