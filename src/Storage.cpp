@@ -12,7 +12,6 @@
 
 Storage::Storage(const std::string& filename) : filename(filename)
 {
-    sparseIndexStep = 4;
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
     std::ifstream inFile(filename, std::ios::binary);
@@ -338,4 +337,61 @@ void Storage::buildSparseIndex()
 
         index += sparseIndexStep;
     }
+}
+
+void Storage::flushLoop()
+{
+    while (running) {
+        std::this_thread::sleep_for(flushInterval);
+
+        std::vector<Record> batch;
+
+        {
+            std::lock_guard<std::mutex> lock(bufferMutex);
+            batch.swap(activeBuffer);
+        }
+
+        if (batch.empty()) continue;
+
+        flushBufferToDisk(batch);
+    }
+}
+
+void Storage::flushBufferToDisk(const std::vector<Record>& batch)
+{
+    if (batch.empty()) return;
+
+    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
+    if (!outFile.is_open()) {
+        throw std::runtime_error("Failed to open file for writing: " + filename);
+    }
+
+    for (const auto& r : batch) {
+        // Compute records here
+        outFile.write(reinterpret_cast<const char*>(&r), sizeof(Record));
+
+        if (!outFile.good()) {
+            throw std::runtime_error("Failed while writing record to disk");
+        }
+
+        lastTimestamp = r.timestamp;
+
+        if (recordCount % sparseIndexStep == 0) {
+            sparseIndex.push_back(IndexEntry{
+                .timestamp = r.timestamp,
+                .recordIndex = recordCount
+            });
+        }
+
+        ++recordCount;
+    }
+
+    outFile.flush(); //flush C++ stream buffers to OS buffers
+
+    int fd = ::fileno(outFile.rdbuf()->fd()); //attempt to get file descriptor, this is invalid, find a workaround
+    if (::fsync(fd) != 0) { //flush OS buffers to disk
+        throw std::runtime_error("fsync failed");
+    }
+
+    outFile.close();
 }
