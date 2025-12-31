@@ -10,6 +10,8 @@ int main() {
         store.append({1670861286000, 44.1});
         store.append({1670861283000, 44.1});
 
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
         auto records = store.readAll();
 
         std::cout << "Records in file:\n";

@@ -14,14 +14,6 @@ Storage::Storage(const std::string& filename) : filename(filename)
 {
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
-    fd = ::open(filename.c_str(),
-                O_WRONLY | O_APPEND | O_CREAT,
-                0644);
-
-    if (fd < 0) {
-        throw std::runtime_error("Failed to open data file");
-    }
-
     flushThread = std::thread(&Storage::flushLoop, this);
 
     std::ifstream inFile(filename, std::ios::binary);
@@ -40,6 +32,15 @@ Storage::Storage(const std::string& filename) : filename(filename)
         outFile.close();
         recordCount = 0;
     }
+
+    fd = ::open(filename.c_str(),
+                O_WRONLY | O_APPEND | O_CREAT,
+                0644);
+
+    if (fd < 0) {
+        throw std::runtime_error("Failed to open data file");
+    }
+
     std::optional<Record> lastRecord = getLastRecord();
     if (lastRecord.has_value())
     {
