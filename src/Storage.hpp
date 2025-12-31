@@ -13,6 +13,9 @@ public:
     //constructor
     explicit Storage(const std::string& filename);
 
+    //destructor
+    ~Storage();
+
     //write functions
     bool append(Record r);
 
@@ -35,6 +38,7 @@ private:
     TSDBHeader header;
     int64_t lastTimestamp;
     size_t recordCount;
+    int fd;
 
     //sparse index
     const size_t sparseIndexStep{4};
