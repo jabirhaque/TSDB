@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdexcept>
+#include <algorithm>
 
 
 Storage::Storage(const std::string& filename) : filename(filename)
@@ -361,7 +362,12 @@ void Storage::flushLoop()
     }
 }
 
-void Storage::flushBufferToDisk(const std::vector<Record>& batch) {
+void Storage::flushBufferToDisk(std::vector<Record>& batch) {
+    std::sort(batch.begin(), batch.end(),
+              [](const Record& a, const Record& b) {
+                  return a.timestamp < b.timestamp;
+              });
+
     size_t bytes = batch.size() * sizeof(Record);
 
     ssize_t written = ::write(fd, batch.data(), bytes);

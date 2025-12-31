@@ -61,5 +61,5 @@ private:
     uint32_t computeCRC(const Record& r) const;
     void buildSparseIndex();
     void flushLoop();
-    void flushBufferToDisk(const std::vector<Record>& buffer);
+    void flushBufferToDisk( std::vector<Record>& buffer);
 };
