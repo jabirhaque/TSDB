@@ -19,7 +19,7 @@ Storage::Storage(const std::string& filename) : filename(filename)
 
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
-        header = validateAndReadHeader(inFile);
+        header = validateAndReadHeader(inFile, filename);
         recordCount = recoverPartialWriteAndReturnRecordCount(inFile);
     }
     else
@@ -246,7 +246,7 @@ const std::vector<IndexEntry>& Storage::getSparseIndex() const
     return sparseIndex;
 }
 
-TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile)
+TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile, std::string filename)
 {
     if (inFile.is_open()) {
 
