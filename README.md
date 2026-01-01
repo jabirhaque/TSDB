@@ -2,17 +2,18 @@
 
 This project is a simple **Time Series Database (TSDB)** implemented in C++ from scratch. It is designed to store sequential timestamped numeric data efficiently and provide a simple interface for reading and writing records. This project is in its early stages of development.
 
-## Planned Features
+## Features
 
-- **Binary Storage Format**: Store records in a compact binary format for faster read/write and smaller disk usage.
-- **Random Access Reads**: Allow querying specific time ranges or individual timestamps without reading the entire file.
-- **Data Integrity and Rollback**: Implement safe rollback mechanisms and atomic writes to prevent corruption during crashes.
-- **Multi-Series Support**: Manage multiple independent time series in a single database instance.
-- **Indexing**: Build lightweight indexes to speed up queries and range scans.
-- **Concurrency**: Support multi-threaded reads and writes with proper synchronization.
-- **Persistence and Recovery**: Ensure fast recovery and durable storage across program restarts.
-- **CLI and API**: Provide a command-line interface and C++ API for inserting, querying, and managing time series data.
-- **Performance Metrics**: Track append rates, query times, and storage size to benchmark improvements.
+| Feature                         | Description                                                                                                  | Progress                                                       |
+|---------------------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| **Binary Storage Format**       | Store records in a compact binary format for faster read/write and smaller disk usage                        | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
+| **Data Integrity and Recovery** | Implement safe recovery mechanisms and atomic writes to durable storage to prevent corruption during crashes | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
+| **Indexing**                    | Build lightweight indexes to speed up queries and range scans                                                | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
+| **Random Access Reads**         | Allow querying specific time ranges or individual timestamps without reading the entire file                 | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
+| **Concurrency**                 | Support multi-threaded reads and writes with proper synchronization                                          | ![Progress Bar](https://progress-bar.xyz/75/?title=Testing)    |
+| **Multi-Series Support**        | Manage multiple independent time series in a single database instance                                        | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
+| **CLI and API**                 | Provide a command-line interface and C++ API for inserting, querying, and managing time series data          | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
+| **Performance Metrics**         | Track append rates, query times, and storage size to benchmark improvements                                  | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
 
 ## Technology Stack
 ![C++](https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white)
