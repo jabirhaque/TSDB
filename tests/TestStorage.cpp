@@ -12,6 +12,9 @@ TEST(StorageTest, AppendSingleRecord) {
     Record r1 {1000, 42.0};
 
     EXPECT_TRUE(s.append(r1));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     auto records = s.readAll();
     ASSERT_EQ(records.size(), 1);
 }
@@ -27,6 +30,9 @@ TEST(StorageTest, AppendMultipleRecords) {
 
     EXPECT_TRUE(s.append(r1));
     EXPECT_TRUE(s.append(r2));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     auto records = s.readAll();
     ASSERT_EQ(records.size(), 2);
 }
@@ -42,6 +48,8 @@ TEST(StorageTest, ReadAll) {
 
     s.append(r1);
     s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     auto records = s.readAll();
     ASSERT_EQ(records.size(), 2);
@@ -59,7 +67,11 @@ TEST(StorageTest, MonotonicAppend) {
     Record r2 {900, 43.0};
 
     EXPECT_TRUE(s.append(r1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     EXPECT_FALSE(s.append(r2));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     auto records = s.readAll();
     ASSERT_EQ(records.size(), 1);
 }
@@ -75,6 +87,8 @@ TEST(StorageTest, RestartPreservesData) {
 
     s.append(r1);
     s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     Storage s2(filename);
 
@@ -96,6 +110,8 @@ TEST(StorageTest, RestartPreservesLastTimestamp) {
     s.append(r1);
     s.append(r2);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     Storage s2(filename);
 
     EXPECT_EQ(s2.getLastTimestamp(), 1100);
@@ -113,6 +129,8 @@ TEST(StorageTest, RestartPreservesMonotonicity) {
     s.append(r1);
     s.append(r2);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     Storage s2(filename);
 
     Record r3 {900, 41.0};
@@ -122,6 +140,8 @@ TEST(StorageTest, RestartPreservesMonotonicity) {
     EXPECT_FALSE(s2.append(r3));
     EXPECT_TRUE(s2.append(r4));
     EXPECT_FALSE(s2.append(r5));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     auto records = s.readAll();
     auto records2 = s.readAll();
@@ -167,9 +187,10 @@ TEST(StorageTest, InvalidMagicNumberThrows) {
     std::ofstream outFile(filename, std::ios::binary | std::ios::app);
     outFile.write(reinterpret_cast<const char*>(&badHeader), sizeof(TSDBHeader));
     outFile.close();
+    std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage s(filename);
+        Storage::validateAndReadHeader(inFile, filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Invalid TSDB file magic number: testdb.tsdb");
@@ -186,9 +207,10 @@ TEST(StorageTest, IncompatibleVersionThrows) {
     std::ofstream outFile(filename, std::ios::binary | std::ios::app);
     outFile.write(reinterpret_cast<const char*>(&badHeader), sizeof(TSDBHeader));
     outFile.close();
+    std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage s(filename);
+        Storage::validateAndReadHeader(inFile, filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Unsupported TSDB file version: testdb.tsdb");
@@ -205,9 +227,10 @@ TEST(StorageTest, InvalidRecordSizeThrows) {
     std::ofstream outFile(filename, std::ios::binary | std::ios::app);
     outFile.write(reinterpret_cast<const char*>(&badHeader), sizeof(TSDBHeader));
     outFile.close();
+    std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage s(filename);
+        Storage::validateAndReadHeader(inFile, filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Record size mismatch: testdb.tsdb");
@@ -227,6 +250,8 @@ TEST(StorageTest, GetLastRecord) {
 
     s.append(r1);
     s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::optional<Record> lastRecord = s.getLastRecord();
 
@@ -261,6 +286,8 @@ TEST(StorageTest, GetRecordByIndex) {
     s.append(r2);
     s.append(r3);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     Record rec = s.getRecord(1);
 
     EXPECT_EQ(rec.timestamp, 1100);
@@ -280,6 +307,8 @@ TEST(StorageTest, GetFirstRecordByIndex) {
     s.append(r1);
     s.append(r2);
     s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     Record rec = s.getRecord(0);
 
@@ -301,6 +330,8 @@ TEST(StorageTest, GetLastRecordByIndex) {
     s.append(r2);
     s.append(r3);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     Record rec = s.getRecord(2);
 
     EXPECT_EQ(rec.timestamp, 1200);
@@ -320,6 +351,8 @@ TEST(StorageTest, GetRecordByOutOfBoundsIndexThrows) {
     s.append(r1);
     s.append(r2);
     s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     try {
         s.getRecord(3);
@@ -354,6 +387,8 @@ TEST(StorageTest, SparseIndexTest) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     const std::vector<IndexEntry>& sparseIndex = s.getSparseIndex();
     ASSERT_EQ(s.getSparseIndexStep(), 4);
@@ -395,6 +430,8 @@ TEST(StorageTest, ReadRangeInclusiveBothEnds) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(1100, 1400);
     ASSERT_EQ(records.size(), 4);
     for (int i=0; i<4; ++i) {
@@ -424,6 +461,8 @@ TEST(StorageTest, ReadRangeInclusiveStartEnd) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::vector<Record> records = s.readRange(1100, 1450);
     ASSERT_EQ(records.size(), 4);
@@ -455,6 +494,8 @@ TEST(StorageTest, ReadRangeInclusiveEndEnd) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(1050, 1400);
     ASSERT_EQ(records.size(), 4);
     for (int i=0; i<4; ++i) {
@@ -484,6 +525,8 @@ TEST(StorageTest, ReadRangeExclusiveBothEnds) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::vector<Record> records = s.readRange(1050, 1450);
     ASSERT_EQ(records.size(), 4);
@@ -515,6 +558,8 @@ TEST(StorageTest, ReadRangeOutOfRangeLeft) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(800, 900);
     ASSERT_EQ(records.size(), 0);
 }
@@ -540,6 +585,8 @@ TEST(StorageTest, ReadRangeOutOfRangeRight) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::vector<Record> records = s.readRange(1700, 1800);
     ASSERT_EQ(records.size(), 0);
@@ -567,6 +614,8 @@ TEST(StorageTest, ReadRangeOutOfRangeWithin) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(1325, 1375);
     ASSERT_EQ(records.size(), 0);
 }
@@ -592,6 +641,8 @@ TEST(StorageTest, ReadRangeLeftOnTheBoundary) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::vector<Record> records = s.readRange(1000, 1400);
     ASSERT_EQ(records.size(), 5);
@@ -623,6 +674,8 @@ TEST(StorageTest, ReadRangeLeftFallsOut) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(900, 1400);
     ASSERT_EQ(records.size(), 5);
     for (int i=0; i<5; ++i) {
@@ -652,6 +705,8 @@ TEST(StorageTest, ReadRangeRightOnTheBoundary) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::vector<Record> records = s.readRange(1100, 1600);
     ASSERT_EQ(records.size(), 6);
@@ -683,6 +738,8 @@ TEST(StorageTest, ReadRangeRightFallsOut) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(1100, 1700);
     ASSERT_EQ(records.size(), 6);
     for (int i=0; i<6; ++i) {
@@ -713,6 +770,8 @@ TEST(StorageTest, ReadRangeSingleRecord) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     std::vector<Record> records = s.readRange(1100, 1100);
     ASSERT_EQ(records.size(), 1);
     ASSERT_EQ(records[0].timestamp, 1100);
@@ -740,6 +799,8 @@ TEST(StorageTest, ReadRangeSingleRecordNoResult) {
     s.append(r5);
     s.append(r6);
     s.append(r7);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     std::vector<Record> records = s.readRange(1150, 1150);
     ASSERT_TRUE(records.empty());
@@ -777,6 +838,8 @@ TEST(StorageTest, ReadRangeInvalidRangeThrows) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     try {
         std::vector<Record> records = s.readRange(1200, 1000);
         FAIL() << "Expected std::runtime_error";
@@ -798,6 +861,8 @@ TEST(StorageTest, CorrupedRecordThrows) {
 
     s.append(r1);
     s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     {
         std::fstream file(filename, std::ios::binary | std::ios::in | std::ios::out);
@@ -848,6 +913,8 @@ TEST(StorageTest, RecoveryFromCorruptedRecord) {
     s.append(r6);
     s.append(r7);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     Record r {1700, 47.0};
 
     std::ofstream outFile(filename, std::ios::binary | std::ios::app);
@@ -865,4 +932,88 @@ TEST(StorageTest, RecoveryFromCorruptedRecord) {
     ASSERT_EQ(records.size(), 7);
     ASSERT_EQ(s2.getRecordCount(), 7);
     ASSERT_EQ(records[6].timestamp, 1600);
+}
+
+TEST(StorageTest, MultiThreadingAppend) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    const int producerCount = 4;
+    const int recordsPerProducer = 100;
+
+    std::vector<std::thread> producers;
+
+    for (int p = 0; p < producerCount; p++) {
+        producers.emplace_back([&, p]() {
+            for (int i = 0; i < recordsPerProducer; ++i) {
+                Record r;
+                r.timestamp = p * 1'000'000 + i;
+                r.value = static_cast<double>(i);
+
+                EXPECT_TRUE(s.append(r));
+            }
+        });
+    }
+    for (auto& t : producers) {
+        t.join();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    std::vector<Record> records = s.readAll();
+
+    ASSERT_EQ(records.size(),
+              producerCount * recordsPerProducer);
+
+    for (int i=1; i<records.size(); i++) {
+        EXPECT_LT(records[i-1].timestamp, records[i].timestamp);
+    }
+}
+
+TEST(StorageTest, MultiThreadingAppendMonotonicEnforcement) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    const int producerCount = 4;
+    const int recordsPerProducer = 100;
+
+    std::vector<std::thread> producers;
+
+    for (int p = 0; p < producerCount; p++) {
+        producers.emplace_back([&, p]() {
+            for (int i = 0; i < recordsPerProducer; ++i) {
+                Record r;
+                r.timestamp = p * 1'000'000 + i;
+                r.value = static_cast<double>(i);
+
+                EXPECT_TRUE(s.append(r));
+            }
+        });
+    }
+    for (auto& t : producers) {
+        t.join();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    for (int i=0; i<recordsPerProducer; i++) {
+        Record r;
+        r.timestamp = i + 500'000;
+        r.value = -1.0;
+        s.append(r);
+        EXPECT_FALSE(s.append(r));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    std::vector<Record> records = s.readAll();
+
+    ASSERT_EQ(records.size(),
+              producerCount * recordsPerProducer);
+
+    for (int i=1; i<records.size(); i++) {
+        EXPECT_LT(records[i-1].timestamp, records[i].timestamp);
+    }
 }

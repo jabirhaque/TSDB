@@ -8,16 +8,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdexcept>
+#include <algorithm>
+#include <iostream>
 
 
 Storage::Storage(const std::string& filename) : filename(filename)
 {
-    sparseIndexStep = 4;
     lastTimestamp = std::numeric_limits<int64_t>::min();
+
+    flushThread = std::thread(&Storage::flushLoop, this);
 
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile.is_open()) {
-        header = validateAndReadHeader(inFile);
+        header = validateAndReadHeader(inFile, filename);
         recordCount = recoverPartialWriteAndReturnRecordCount(inFile);
     }
     else
@@ -31,6 +34,15 @@ Storage::Storage(const std::string& filename) : filename(filename)
         outFile.close();
         recordCount = 0;
     }
+
+    fd = ::open(filename.c_str(),
+                O_WRONLY | O_APPEND | O_CREAT,
+                0644);
+
+    if (fd < 0) {
+        throw std::runtime_error("Failed to open data file");
+    }
+
     std::optional<Record> lastRecord = getLastRecord();
     if (lastRecord.has_value())
     {
@@ -40,30 +52,23 @@ Storage::Storage(const std::string& filename) : filename(filename)
     buildSparseIndex();
 }
 
+Storage::~Storage()
+{
+    running = false;
+    if (flushThread.joinable()) flushThread.join();
+    ::close(fd);
+}
+
 bool Storage::append(Record r)
 {
     if (r.timestamp <= lastTimestamp) return false;
 
     r.crc = computeCRC(r);
 
-    std::ofstream outFile(filename, std::ios::binary | std::ios::app);
-    if (!outFile.is_open()) {
-        throw std::runtime_error("Failed to open file for writing: " + filename);
-    }
-
-    outFile.write(reinterpret_cast<const char*>(&r), sizeof(Record));
-
-    outFile.close();
-
-    lastTimestamp = r.timestamp;
-    if (recordCount % sparseIndexStep == 0)
     {
-        IndexEntry indexEntry;
-        indexEntry.timestamp = r.timestamp;
-        indexEntry.recordIndex = recordCount;
-        sparseIndex.push_back(indexEntry);
+        std::lock_guard<std::mutex> lock(bufferMutex);
+        activeBuffer.push_back(r);
     }
-    recordCount++;
     return true;
 }
 
@@ -242,7 +247,7 @@ const std::vector<IndexEntry>& Storage::getSparseIndex() const
     return sparseIndex;
 }
 
-TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile)
+TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile, std::string filename)
 {
     if (inFile.is_open()) {
 
@@ -337,5 +342,50 @@ void Storage::buildSparseIndex()
         sparseIndex.push_back(indexEntry);
 
         index += sparseIndexStep;
+    }
+}
+
+void Storage::flushLoop()
+{
+    while (running) {
+        std::this_thread::sleep_for(flushInterval);
+
+        std::vector<Record> batch;
+
+        {
+            std::lock_guard<std::mutex> lock(bufferMutex);
+            batch.swap(activeBuffer);
+        }
+
+        if (batch.empty()) continue;
+
+        flushBufferToDisk(batch);
+    }
+}
+
+void Storage::flushBufferToDisk(std::vector<Record>& batch) {
+    std::sort(batch.begin(), batch.end(),
+              [](const Record& a, const Record& b) {
+                  return a.timestamp < b.timestamp;
+              });
+
+    size_t bytes = batch.size() * sizeof(Record);
+
+    ssize_t written = ::write(fd, batch.data(), bytes);
+    if (written != static_cast<ssize_t>(bytes)) {
+        throw std::runtime_error("Partial write");
+    }
+
+    if (::fsync(fd) != 0) {
+        throw std::runtime_error("fsync failed");
+    }
+
+    for (const auto& r : batch) {
+        lastTimestamp = r.timestamp;
+
+        if (recordCount % sparseIndexStep == 0) {
+            sparseIndex.push_back({r.timestamp, recordCount});
+        }
+        ++recordCount;
     }
 }

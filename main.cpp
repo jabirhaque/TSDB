@@ -2,25 +2,31 @@
 #include <iostream>
 
 int main() {
-    try {
-        Storage store("records.txt");
+    Storage s("records.txt");
 
-        store.append({1670861288000, 42.5});
-        store.append({1670861284000, 43.7});
-        store.append({1670861286000, 44.1});
-        store.append({1670861283000, 44.1});
+    const int producerCount = 4;
+    const int recordsPerProducer = 1000;
 
-        auto records = store.readAll();
+    std::vector<std::thread> producers;
 
-        std::cout << "Records in file:\n";
-        for (const auto& r : records) {
-            std::cout << r.timestamp << " -> " << r.value << "\n";
-        }
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
+    for (int p = 0; p < producerCount; p++) {
+        producers.emplace_back([&, p]() {
+            for (int i = 0; i < recordsPerProducer; ++i) {
+                Record r;
+                r.timestamp = p * 1'000'000 + i;
+                r.value = static_cast<double>(i);
+                s.append(r);
+            }
+        });
     }
+    for (auto& t : producers) {
+        t.join();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    std::vector<Record> records = s.readAll();
+
+    std::cout << "Total records: " << records.size() << std::endl;
 
     return 0;
 }

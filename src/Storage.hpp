@@ -5,12 +5,16 @@
 #include "IndexEntry.hpp"
 #include <vector>
 #include <optional>
+#include <thread>
 
 class Storage
 {
 public:
     //constructor
     explicit Storage(const std::string& filename);
+
+    //destructor
+    ~Storage();
 
     //write functions
     bool append(Record r);
@@ -28,17 +32,35 @@ public:
     size_t getSparseIndexStep() const;
     const std::vector<IndexEntry>& getSparseIndex() const;
 
+    static TSDBHeader validateAndReadHeader(std::ifstream& inFile, std::string filename);
+
 private:
-    std::string filename;
+    //file info
+    const std::string filename;
     TSDBHeader header;
     int64_t lastTimestamp;
     size_t recordCount;
+    int fd;
 
-    size_t sparseIndexStep;
+    //sparse index
+    const size_t sparseIndexStep{4};
     std::vector<IndexEntry> sparseIndex;
 
-    TSDBHeader validateAndReadHeader(std::ifstream& inFile);
+    //buffers
+    std::vector<Record> activeBuffer;
+    std::vector<Record> flushBuffer;
+
+    //synchronisation
+    std::atomic<bool> running{true};
+    mutable std::mutex bufferMutex;
+    std::thread flushThread;
+    const std::chrono::milliseconds flushInterval{5};
+
+
+    //private methods
     size_t recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile);
     uint32_t computeCRC(const Record& r) const;
     void buildSparseIndex();
+    void flushLoop();
+    void flushBufferToDisk( std::vector<Record>& buffer);
 };
