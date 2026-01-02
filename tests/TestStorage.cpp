@@ -970,3 +970,50 @@ TEST(StorageTest, MultiThreadingAppend) {
         EXPECT_LT(records[i-1].timestamp, records[i].timestamp);
     }
 }
+
+TEST(StorageTest, MultiThreadingAppendMonotonicEnforcement) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    const int producerCount = 4;
+    const int recordsPerProducer = 100;
+
+    std::vector<std::thread> producers;
+
+    for (int p = 0; p < producerCount; p++) {
+        producers.emplace_back([&, p]() {
+            for (int i = 0; i < recordsPerProducer; ++i) {
+                Record r;
+                r.timestamp = p * 1'000'000 + i;
+                r.value = static_cast<double>(i);
+
+                EXPECT_TRUE(s.append(r));
+            }
+        });
+    }
+    for (auto& t : producers) {
+        t.join();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    for (int i=0; i<recordsPerProducer; i++) {
+        Record r;
+        r.timestamp = i + 500'000;
+        r.value = -1.0;
+        s.append(r);
+        EXPECT_FALSE(s.append(r));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    std::vector<Record> records = s.readAll();
+
+    ASSERT_EQ(records.size(),
+              producerCount * recordsPerProducer);
+
+    for (int i=1; i<records.size(); i++) {
+        EXPECT_LT(records[i-1].timestamp, records[i].timestamp);
+    }
+}

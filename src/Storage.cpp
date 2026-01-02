@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <stdexcept>
 #include <algorithm>
+#include <iostream>
 
 
 Storage::Storage(const std::string& filename) : filename(filename)
