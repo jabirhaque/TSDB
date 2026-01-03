@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(TSDB
         main.cpp
         src/Storage.cpp
+        src/TSDBCLI.cpp
 )
 
 add_executable(TSDB_tests
