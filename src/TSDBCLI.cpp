@@ -1,5 +1,6 @@
 #include "TSDBCLI.hpp"
 #include <iostream>
+#include <sstream>
 
 TSDBCLI::TSDBCLI(Storage& storage): storage(storage){}
 
@@ -38,6 +39,20 @@ void TSDBCLI::handleCommand(const std::string& command)
     else if (command == "readall")
     {
         std::vector<Record> records = storage.readAll();
+        for (const Record& r : records)
+        {
+            std::cout << "Timestamp: " << r.timestamp << ", Value: " << r.value << "\n";
+        }
+    }
+    else if (command.rfind("readrange ", 0) == 0)
+    {
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        std::vector<Record> records = storage.readRange(number1, number2);
         for (const Record& r : records)
         {
             std::cout << "Timestamp: " << r.timestamp << ", Value: " << r.value << "\n";
