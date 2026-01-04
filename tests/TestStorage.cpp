@@ -1017,3 +1017,38 @@ TEST(StorageTest, MultiThreadingAppendMonotonicEnforcement) {
         EXPECT_LT(records[i-1].timestamp, records[i].timestamp);
     }
 }
+
+TEST(StorageTest, ReadFromTimeStamp) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    EXPECT_TRUE(s.append(r1));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    std::optional<Record> actual = s.readFromTime(1000);
+
+    ASSERT_TRUE(actual.has_value());
+    EXPECT_EQ(actual->timestamp, 1000);
+}
+
+TEST(StorageTest, ReadFromTimeStampNoResult) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    EXPECT_TRUE(s.append(r1));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    std::optional<Record> actual = s.readFromTime(1100);
+
+    ASSERT_FALSE(actual.has_value());
+}
