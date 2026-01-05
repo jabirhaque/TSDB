@@ -7,8 +7,9 @@ public:
     explicit TSDBCLI(Storage& storage);
     void run();
     void printHelp() const;
+    bool validateReadRangeCommand(const std::string& command);
+    void handleCommand(const std::string& command);
 
 private:
     Storage& storage;
-    void handleCommand(const std::string& command);
 };

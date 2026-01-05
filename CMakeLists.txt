@@ -13,7 +13,9 @@ add_executable(TSDB
 
 add_executable(TSDB_tests
         tests/TestStorage.cpp
+        tests/TestTSDBCLI.cpp
         src/Storage.cpp
+        src/TSDBCLI.cpp
 )
 
 find_package(ZLIB REQUIRED)
