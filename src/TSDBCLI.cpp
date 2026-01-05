@@ -46,11 +46,22 @@ void TSDBCLI::handleCommand(const std::string& command)
     }
     else if (command.rfind("readrange ", 0) == 0)
     {
+        if (!validateReadRangeCommand(command))
+        {
+            std::cout << "Invalid readrange command. Usage: readrange <start> <end>\n";
+            return;
+        }
         std::istringstream iss(command);
         std::string ignore;
         int64_t number1, number2;
 
         iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
 
         std::vector<Record> records = storage.readRange(number1, number2);
         for (const Record& r : records)
@@ -62,4 +73,28 @@ void TSDBCLI::handleCommand(const std::string& command)
     {
         std::cout << "Unknown command: " << command << "\n";
     }
+}
+
+bool TSDBCLI::validateReadRangeCommand(const std::string& command)
+{
+    const std::string prefix = "readrange ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int64_t number1, number2;
+    std::string extra;
+    if (!(iss >> number1 >> number2)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
 }
