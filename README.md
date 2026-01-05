@@ -11,8 +11,8 @@ This project is a simple **Time Series Database (TSDB)** implemented in C++ from
 | **Indexing**                    | Build lightweight indexes to speed up queries and range scans                                                | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
 | **Random Access Reads**         | Allow querying specific time ranges or individual timestamps without reading the entire file                 | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
 | **Concurrency**                 | Support multi-threaded reads and writes with proper synchronization                                          | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
+| **CLI and API**                 | Provide a command-line interface and C++ API for inserting, querying, and managing time series data          | ![Progress Bar](https://progress-bar.xyz/25/?title=Development)   |
 | **Multi-Series Support**        | Manage multiple independent time series in a single database instance                                        | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
-| **CLI and API**                 | Provide a command-line interface and C++ API for inserting, querying, and managing time series data          | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
 | **Performance Metrics**         | Track append rates, query times, and storage size to benchmark improvements                                  | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
 
 ## Technology Stack
