@@ -72,7 +72,7 @@ TEST(StorageTest, TestReadRangeEmptyDB) {
     cli.handleCommand("readrange 1000 2000");
     std::string output = testing::internal::GetCapturedStdout();
 
-    EXPECT_EQ(output, "");
+    EXPECT_EQ(output, "No record found\n");
 }
 
 TEST(StorageTest, TestReadRangeMultipleRecords) {
@@ -99,5 +99,59 @@ TEST(StorageTest, TestReadRangeMultipleRecords) {
     cli.handleCommand("readrange 1000 1600");
     std::string output = testing::internal::GetCapturedStdout();
 
-    EXPECT_EQ(output, "Timestamp: 1000, Value: 42\nTimestamp: 1500, Value: 43.5\n");
+    EXPECT_EQ(output,
+        "Timestamp: 1000, Value: 42\n"
+        "Timestamp: 1500, Value: 43.5\n"
+        );
+}
+
+TEST(StorageTest, TestValidReadFromCommand) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli(s);
+
+    EXPECT_TRUE(cli.validateReadFromCommand("readfrom 1000"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("readfrom 1000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Timestamp: 1000, Value: 42\n");
+}
+
+TEST(StorageTest, TestInvalidReadFromCommand) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli(s);
+
+    EXPECT_FALSE(cli.validateReadFromCommand("readfrom abc"));
+    EXPECT_FALSE(cli.validateReadFromCommand("readfrom 1000 extra"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("readfrom abc");
+    cli.handleCommand("readfrom 1000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid readfrom command. Usage: readfrom <timestamp>\n"
+        "Invalid readfrom command. Usage: readfrom <timestamp>\n"
+        );
 }
