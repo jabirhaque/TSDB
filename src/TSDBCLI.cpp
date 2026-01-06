@@ -25,8 +25,8 @@ void TSDBCLI::printHelp() const
     std::cout << "  help                    - Show this help message\n";
     std::cout << "  stats                   - Show database statistics\n";
     std::cout << "  readall                 - Read and display all records\n";
-    std::cout << "  readrange <start> <end> - Read records in the specified time range\n";
     std::cout << "  readfrom <timestamp>    - Read record from the specified timestamp\n";
+    std::cout << "  readrange <start> <end> - Read records in the specified time range\n";
     std::cout << "  exit, quit              - Exit the CLI\n";
 }
 
@@ -42,6 +42,30 @@ void TSDBCLI::handleCommand(const std::string& command)
         for (const Record& r : records)
         {
             std::cout << "Timestamp: " << r.timestamp << ", Value: " << r.value << "\n";
+        }
+    }
+    else if (command.rfind("readfrom ", 0) == 0)
+    {
+        if (!validateReadFromCommand(command))
+        {
+            std::cout << "Invalid readfrom command. Usage: readfrom <timestamp>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1;
+
+        iss >> ignore >> number1;
+
+        std::optional<Record> record = storage.readFromTime(number1);
+
+        if (record.has_value())
+        {
+            std::cout << "Timestamp: " << record.value().timestamp << ", Value: " << record.value().value << "\n";
+        }
+        else
+        {
+            std::cout << "No record found\n";
         }
     }
     else if (command.rfind("readrange ", 0) == 0)
@@ -64,9 +88,16 @@ void TSDBCLI::handleCommand(const std::string& command)
         }
 
         std::vector<Record> records = storage.readRange(number1, number2);
-        for (const Record& r : records)
+        if (records.empty())
         {
-            std::cout << "Timestamp: " << r.timestamp << ", Value: " << r.value << "\n";
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            for (const Record& r : records)
+            {
+                std::cout << "Timestamp: " << r.timestamp << ", Value: " << r.value << "\n";
+            }
         }
     }
     else
@@ -91,6 +122,30 @@ bool TSDBCLI::validateReadRangeCommand(const std::string& command)
     int64_t number1, number2;
     std::string extra;
     if (!(iss >> number1 >> number2)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
+}
+
+bool TSDBCLI::validateReadFromCommand(const std::string& command)
+{
+    const std::string prefix = "readfrom ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int64_t number1;
+    std::string extra;
+    if (!(iss >> number1)) {
         return false;
     }
     if (iss >> extra) {
