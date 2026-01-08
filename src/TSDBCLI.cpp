@@ -22,12 +22,13 @@ void TSDBCLI::printHelp() const
 {
     std::cout << "TSDB Command Line Interface\n";
     std::cout << "Commands:\n";
-    std::cout << "  help                    - Show this help message\n";
-    std::cout << "  stats                   - Show database statistics\n";
-    std::cout << "  readall                 - Read and display all records\n";
-    std::cout << "  readfrom <timestamp>    - Read record from the specified timestamp\n";
-    std::cout << "  readrange <start> <end> - Read records in the specified time range\n";
-    std::cout << "  exit, quit              - Exit the CLI\n";
+    std::cout << "  help                       - Show this help message\n";
+    std::cout << "  stats                      - Show database statistics\n"; //TODO
+    std::cout << "  readall                    - Read and display all records\n";
+    std::cout << "  readfrom <timestamp>       - Read record from the specified timestamp\n";
+    std::cout << "  readrange <start> <end>    - Read records in the specified time range\n";
+    std::cout << "  append <timestamp> <value> - Append a new record\n";
+    std::cout << "  exit, quit                 - Exit the CLI\n";
 }
 
 void TSDBCLI::handleCommand(const std::string& command)
@@ -100,6 +101,25 @@ void TSDBCLI::handleCommand(const std::string& command)
             }
         }
     }
+    else if (command.rfind("append ", 0) == 0)
+    {
+        if (!validateAppendCommand(command))
+        {
+            std::cout << "Invalid append command. Usage: append <timestamp> <value>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t timestamp;;
+        double value;
+
+        iss >> ignore >> timestamp >> value;
+
+        bool success = storage.append(Record{timestamp, value});
+
+        if (success) std::cout << "Record accepted, pending persistence\n";
+        else std::cout << "Failed to accept record.\n";
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
@@ -146,6 +166,32 @@ bool TSDBCLI::validateReadFromCommand(const std::string& command)
     int64_t number1;
     std::string extra;
     if (!(iss >> number1)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
+}
+
+bool TSDBCLI::validateAppendCommand(const std::string& command)
+{
+    const std::string prefix = "append ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int64_t timestamp;
+    double value;
+
+    std::string extra;
+    if (!(iss >> timestamp >> value)) {
         return false;
     }
     if (iss >> extra) {

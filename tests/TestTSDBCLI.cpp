@@ -155,3 +155,76 @@ TEST(StorageTest, TestInvalidReadFromCommand) {
         "Invalid readfrom command. Usage: readfrom <timestamp>\n"
         );
 }
+
+TEST(StorageTest, TestValidAppendCommand) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    TSDBCLI cli(s);
+
+    EXPECT_TRUE(cli.validateAppendCommand("append 1000 42.0"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("append 1000 42.0");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Record accepted, pending persistence\n");
+}
+
+TEST(StorageTest, TestInvalidAppendCommand) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    TSDBCLI cli(s);
+
+    EXPECT_FALSE(cli.validateAppendCommand("append 1000"));
+    EXPECT_FALSE(cli.validateAppendCommand("append abc def"));
+    EXPECT_FALSE(cli.validateAppendCommand("append 1000 42.0 extra"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("append 1000");
+    cli.handleCommand("append abc def");
+    cli.handleCommand("append 1000 42.0 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid append command. Usage: append <timestamp> <value>\n"
+        "Invalid append command. Usage: append <timestamp> <value>\n"
+        "Invalid append command. Usage: append <timestamp> <value>\n"
+        );
+}
+
+TEST(StorageTest, TestMonotonicAppendCommand) {
+    const char* filename = "testdb.txt";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli(s);
+
+    EXPECT_TRUE(cli.validateAppendCommand("append 900 42.5"));
+    EXPECT_TRUE(cli.validateAppendCommand("append 1000 43.0"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("append 900 42.5");
+    cli.handleCommand("append 1000 43.0");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Failed to accept record.\n"
+        "Failed to accept record.\n"
+        );
+}
