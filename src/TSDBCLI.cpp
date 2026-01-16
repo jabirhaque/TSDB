@@ -1,8 +1,11 @@
 #include "TSDBCLI.hpp"
 #include <iostream>
 #include <sstream>
+#include <filesystem>
 
-TSDBCLI::TSDBCLI(Storage& storage): storage(storage){}
+TSDBCLI::TSDBCLI() : storage(nullptr)
+{
+}
 
 void TSDBCLI::run()
 {
@@ -23,7 +26,8 @@ void TSDBCLI::printHelp() const
     std::cout << "TSDB Command Line Interface\n";
     std::cout << "Commands:\n";
     std::cout << "  help                       - Show this help message\n";
-    std::cout << "  stats                      - Show database statistics\n"; //TODO
+    std::cout << "  create <database>          - Create a new database\n";
+    std::cout << "  use <database>             - Use the specified database\n";
     std::cout << "  readall                    - Read and display all records\n";
     std::cout << "  readfrom <timestamp>       - Read record from the specified timestamp\n";
     std::cout << "  readrange <start> <end>    - Read records in the specified time range\n";
@@ -37,9 +41,67 @@ void TSDBCLI::handleCommand(const std::string& command)
     {
         printHelp();
     }
+    else if (command.rfind("create ", 0) == 0)
+    {
+        if (!validateCreateCommand(command))
+        {
+            std::cout << "Invalid use command. Usage: create <database> where <database> contains letters and numbers only\n";
+            return;
+        }
+
+        std::istringstream iss(command);
+        std::string ignore;
+        std::string db;
+
+        iss >> ignore >> db;
+
+        db += ".tsdb";
+
+        if (std::filesystem::exists(db))
+        {
+            std::cout << "Database already exists\n";
+            return;
+        }
+        if (storage)
+        {
+            storage.reset();
+        }
+        storage = std::make_unique<Storage>(db);
+    }
+    else if (command.rfind("use ", 0) == 0)
+    {
+        if (!validateUseCommand(command))
+        {
+            std::cout << "Invalid use command. Usage: use <database> where <database> contains letters and numbers only\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        std::string db;
+
+        iss >> ignore >> db;
+
+        db += ".tsdb";
+
+        if (!std::filesystem::exists(db))
+        {
+            std::cout << "Database not recognised\n";
+            return;
+        }
+        if (storage)
+        {
+            storage.reset();
+        }
+        storage = std::make_unique<Storage>(db);
+    }
     else if (command == "readall")
     {
-        std::vector<Record> records = storage.readAll();
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
         for (const Record& r : records)
         {
             std::cout << "Timestamp: " << r.timestamp << ", Value: " << r.value << "\n";
@@ -47,6 +109,11 @@ void TSDBCLI::handleCommand(const std::string& command)
     }
     else if (command.rfind("readfrom ", 0) == 0)
     {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
         if (!validateReadFromCommand(command))
         {
             std::cout << "Invalid readfrom command. Usage: readfrom <timestamp>\n";
@@ -58,7 +125,7 @@ void TSDBCLI::handleCommand(const std::string& command)
 
         iss >> ignore >> number1;
 
-        std::optional<Record> record = storage.readFromTime(number1);
+        std::optional<Record> record = (*storage).readFromTime(number1);
 
         if (record.has_value())
         {
@@ -71,6 +138,11 @@ void TSDBCLI::handleCommand(const std::string& command)
     }
     else if (command.rfind("readrange ", 0) == 0)
     {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
         if (!validateReadRangeCommand(command))
         {
             std::cout << "Invalid readrange command. Usage: readrange <start> <end>\n";
@@ -88,7 +160,7 @@ void TSDBCLI::handleCommand(const std::string& command)
             return;
         }
 
-        std::vector<Record> records = storage.readRange(number1, number2);
+        std::vector<Record> records = (*storage).readRange(number1, number2);
         if (records.empty())
         {
             std::cout << "No record found\n";
@@ -103,6 +175,11 @@ void TSDBCLI::handleCommand(const std::string& command)
     }
     else if (command.rfind("append ", 0) == 0)
     {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
         if (!validateAppendCommand(command))
         {
             std::cout << "Invalid append command. Usage: append <timestamp> <value>\n";
@@ -115,7 +192,7 @@ void TSDBCLI::handleCommand(const std::string& command)
 
         iss >> ignore >> timestamp >> value;
 
-        bool success = storage.append(Record{timestamp, value});
+        bool success = (*storage).append(Record{timestamp, value});
 
         if (success) std::cout << "Record accepted, pending persistence\n";
         else std::cout << "Failed to accept record.\n";
@@ -124,6 +201,42 @@ void TSDBCLI::handleCommand(const std::string& command)
     {
         std::cout << "Unknown command: " << command << "\n";
     }
+}
+
+bool TSDBCLI::validateCreateCommand(const std::string& command)
+{
+    const std::string prefix = "create ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(7);
+    if (remainder.empty()) {
+        return false;
+    }
+    for (char c: remainder) {
+        if (!(int(c) >= 48 && int(c) <= 57) && !(int(c) >= 65 && int(c) <= 90) && !(int(c) >= 97 && int(c) <= 122)){
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TSDBCLI::validateUseCommand(const std::string& command)
+{
+    const std::string prefix = "use ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(4);
+    if (remainder.empty()) {
+        return false;
+    }
+    for (char c: remainder) {
+        if (!(int(c) >= 48 && int(c) <= 57) && !(int(c) >= 65 && int(c) <= 90) && !(int(c) >= 97 && int(c) <= 122)){
+            return false;
+        }
+    }
+    return true;
 }
 
 bool TSDBCLI::validateReadRangeCommand(const std::string& command)

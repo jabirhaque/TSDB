@@ -3,7 +3,6 @@
 #include <iostream>
 
 int main() {
-    Storage s("records.txt");
-    TSDBCLI cli(s);
+    TSDBCLI cli;
     cli.run();
 }

@@ -14,7 +14,7 @@ TEST(StorageTest, TestValidReadRangeCommand) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
 
@@ -36,7 +36,7 @@ TEST(StorageTest, TestInvalidReadRangeCommand) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_FALSE(cli.validateReadRangeCommand("readrange 1000"));
     EXPECT_FALSE(cli.validateReadRangeCommand("readrange abc def"));
@@ -64,7 +64,7 @@ TEST(StorageTest, TestReadRangeEmptyDB) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
 
@@ -91,7 +91,7 @@ TEST(StorageTest, TestReadRangeMultipleRecords) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 1600"));
 
@@ -117,7 +117,7 @@ TEST(StorageTest, TestValidReadFromCommand) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateReadFromCommand("readfrom 1000"));
 
@@ -139,7 +139,7 @@ TEST(StorageTest, TestInvalidReadFromCommand) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_FALSE(cli.validateReadFromCommand("readfrom abc"));
     EXPECT_FALSE(cli.validateReadFromCommand("readfrom 1000 extra"));
@@ -162,7 +162,7 @@ TEST(StorageTest, TestValidAppendCommand) {
 
     Storage s(filename);
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateAppendCommand("append 1000 42.0"));
 
@@ -180,7 +180,7 @@ TEST(StorageTest, TestInvalidAppendCommand) {
 
     Storage s(filename);
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_FALSE(cli.validateAppendCommand("append 1000"));
     EXPECT_FALSE(cli.validateAppendCommand("append abc def"));
@@ -212,7 +212,7 @@ TEST(StorageTest, TestMonotonicAppendCommand) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    TSDBCLI cli(s);
+    TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateAppendCommand("append 900 42.5"));
     EXPECT_TRUE(cli.validateAppendCommand("append 1000 43.0"));
