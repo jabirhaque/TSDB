@@ -45,7 +45,7 @@ void TSDBCLI::handleCommand(const std::string& command)
     {
         if (!validateCreateCommand(command))
         {
-            std::cout << "Invalid use command. Usage: create <database> where <database> contains letters and numbers only\n";
+            std::cout << "Invalid create command. Usage: create <database> where <database> contains letters and numbers only\n";
             return;
         }
 

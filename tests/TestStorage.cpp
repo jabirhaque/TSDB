@@ -4,7 +4,7 @@
 #include <optional>
 
 TEST(StorageTest, AppendSingleRecord) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -20,7 +20,7 @@ TEST(StorageTest, AppendSingleRecord) {
 }
 
 TEST(StorageTest, AppendMultipleRecords) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -38,7 +38,7 @@ TEST(StorageTest, AppendMultipleRecords) {
 }
 
 TEST(StorageTest, ReadAll) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -58,7 +58,7 @@ TEST(StorageTest, ReadAll) {
 }
 
 TEST(StorageTest, MonotonicAppend) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -77,7 +77,7 @@ TEST(StorageTest, MonotonicAppend) {
 }
 
 TEST(StorageTest, RestartPreservesData) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -99,7 +99,7 @@ TEST(StorageTest, RestartPreservesData) {
 }
 
 TEST(StorageTest, RestartPreservesLastTimestamp) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -118,7 +118,7 @@ TEST(StorageTest, RestartPreservesLastTimestamp) {
 }
 
 TEST(StorageTest, RestartPreservesMonotonicity) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -150,7 +150,7 @@ TEST(StorageTest, RestartPreservesMonotonicity) {
 }
 
 TEST(StorageTest, ValidHeaderCreation) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -240,7 +240,7 @@ TEST(StorageTest, InvalidRecordSizeThrows) {
 }
 
 TEST(StorageTest, GetLastRecord) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -261,7 +261,7 @@ TEST(StorageTest, GetLastRecord) {
 }
 
 TEST(StorageTest, NoLastRecord) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -273,7 +273,7 @@ TEST(StorageTest, NoLastRecord) {
 }
 
 TEST(StorageTest, GetRecordByIndex) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -295,7 +295,7 @@ TEST(StorageTest, GetRecordByIndex) {
 }
 
 TEST(StorageTest, GetFirstRecordByIndex) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -317,7 +317,7 @@ TEST(StorageTest, GetFirstRecordByIndex) {
 }
 
 TEST(StorageTest, GetLastRecordByIndex) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -339,7 +339,7 @@ TEST(StorageTest, GetLastRecordByIndex) {
 }
 
 TEST(StorageTest, GetRecordByOutOfBoundsIndexThrows) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -365,7 +365,7 @@ TEST(StorageTest, GetRecordByOutOfBoundsIndexThrows) {
 }
 
 TEST(StorageTest, SparseIndexTest) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -409,7 +409,7 @@ TEST(StorageTest, SparseIndexTest) {
 }
 
 TEST(StorageTest, ReadRangeInclusiveBothEnds) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -441,7 +441,7 @@ TEST(StorageTest, ReadRangeInclusiveBothEnds) {
 }
 
 TEST(StorageTest, ReadRangeInclusiveStartEnd) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -473,7 +473,7 @@ TEST(StorageTest, ReadRangeInclusiveStartEnd) {
 }
 
 TEST(StorageTest, ReadRangeInclusiveEndEnd) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -505,7 +505,7 @@ TEST(StorageTest, ReadRangeInclusiveEndEnd) {
 }
 
 TEST(StorageTest, ReadRangeExclusiveBothEnds) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -537,7 +537,7 @@ TEST(StorageTest, ReadRangeExclusiveBothEnds) {
 }
 
 TEST(StorageTest, ReadRangeOutOfRangeLeft) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -565,7 +565,7 @@ TEST(StorageTest, ReadRangeOutOfRangeLeft) {
 }
 
 TEST(StorageTest, ReadRangeOutOfRangeRight) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -593,7 +593,7 @@ TEST(StorageTest, ReadRangeOutOfRangeRight) {
 }
 
 TEST(StorageTest, ReadRangeOutOfRangeWithin) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -621,7 +621,7 @@ TEST(StorageTest, ReadRangeOutOfRangeWithin) {
 }
 
 TEST(StorageTest, ReadRangeLeftOnTheBoundary) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -653,7 +653,7 @@ TEST(StorageTest, ReadRangeLeftOnTheBoundary) {
 }
 
 TEST(StorageTest, ReadRangeLeftFallsOut) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -685,7 +685,7 @@ TEST(StorageTest, ReadRangeLeftFallsOut) {
 }
 
 TEST(StorageTest, ReadRangeRightOnTheBoundary) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -717,7 +717,7 @@ TEST(StorageTest, ReadRangeRightOnTheBoundary) {
 }
 
 TEST(StorageTest, ReadRangeRightFallsOut) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -749,7 +749,7 @@ TEST(StorageTest, ReadRangeRightFallsOut) {
 }
 
 TEST(StorageTest, ReadRangeSingleRecord) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -779,7 +779,7 @@ TEST(StorageTest, ReadRangeSingleRecord) {
 }
 
 TEST(StorageTest, ReadRangeSingleRecordNoResult) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -807,7 +807,7 @@ TEST(StorageTest, ReadRangeSingleRecordNoResult) {
 }
 
 TEST(StorageTest, ReadRangeEmptyFile) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -817,7 +817,7 @@ TEST(StorageTest, ReadRangeEmptyFile) {
 }
 
 TEST(StorageTest, ReadRangeInvalidRangeThrows) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -851,7 +851,7 @@ TEST(StorageTest, ReadRangeInvalidRangeThrows) {
 }
 
 TEST(StorageTest, CorrupedRecordThrows) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -892,7 +892,7 @@ TEST(StorageTest, CorrupedRecordThrows) {
 }
 
 TEST(StorageTest, RecoveryFromCorruptedRecord) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -935,7 +935,7 @@ TEST(StorageTest, RecoveryFromCorruptedRecord) {
 }
 
 TEST(StorageTest, MultiThreadingAppend) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -972,7 +972,7 @@ TEST(StorageTest, MultiThreadingAppend) {
 }
 
 TEST(StorageTest, MultiThreadingAppendMonotonicEnforcement) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -1019,7 +1019,7 @@ TEST(StorageTest, MultiThreadingAppendMonotonicEnforcement) {
 }
 
 TEST(StorageTest, ReadFromTimeStamp) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -1037,7 +1037,7 @@ TEST(StorageTest, ReadFromTimeStamp) {
 }
 
 TEST(StorageTest, ReadFromTimeStampNoResult) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);

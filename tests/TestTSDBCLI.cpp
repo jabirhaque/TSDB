@@ -1,6 +1,84 @@
 #include <gtest/gtest.h>
+#include <filesystem>
 #include "../src/Storage.hpp"
 #include "../src/TSDBCLI.hpp"
+
+TEST(StorageTest, ValidCreateCommand) {
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateCreateCommand("create testdb"));
+
+    cli.handleCommand("create testdb");
+
+    EXPECT_TRUE(std::filesystem::exists("testdb.tsdb"));
+}
+
+TEST(StorageTest, InvalidCreateCommand) {
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateCreateCommand("create testdb.23 __"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("create testdb*23 __");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Invalid create command. Usage: create <database> where <database> contains letters and numbers only\n");
+}
+
+TEST(StorageTest, CreateCommandExistingDB) {
+    TSDBCLI cli;
+
+    cli.handleCommand("create testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("create testdb");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Database already exists\n");
+}
+
+TEST(StorageTest, ValidUseCommand) {
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateUseCommand("use testdb"));
+
+    cli.handleCommand("create testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("use testdb");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "");
+}
+
+TEST(StorageTest, InvalidUseCommand) {
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateUseCommand("use testdb.23 __"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("use testdb.23 __");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Invalid use command. Usage: use <database> where <database> contains letters and numbers only\n");
+}
+
+TEST(StorageTest, UseCommandNonExistingDB) {
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb2");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("use testdb2");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Database not recognised\n");
+}
 
 TEST(StorageTest, TestValidReadRangeCommand) {
     const char* filename = "testdb.tsdb";
@@ -17,7 +95,7 @@ TEST(StorageTest, TestValidReadRangeCommand) {
     TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
-    
+
     cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
