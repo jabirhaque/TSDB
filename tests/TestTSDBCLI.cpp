@@ -3,7 +3,7 @@
 #include "../src/TSDBCLI.hpp"
 
 TEST(StorageTest, TestValidReadRangeCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -17,6 +17,8 @@ TEST(StorageTest, TestValidReadRangeCommand) {
     TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
+    
+    cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
 
@@ -27,7 +29,7 @@ TEST(StorageTest, TestValidReadRangeCommand) {
 }
 
 TEST(StorageTest, TestInvalidReadRangeCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -41,6 +43,8 @@ TEST(StorageTest, TestInvalidReadRangeCommand) {
     EXPECT_FALSE(cli.validateReadRangeCommand("readrange 1000"));
     EXPECT_FALSE(cli.validateReadRangeCommand("readrange abc def"));
     EXPECT_FALSE(cli.validateReadRangeCommand("readrange 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
 
@@ -57,7 +61,7 @@ TEST(StorageTest, TestInvalidReadRangeCommand) {
 }
 
 TEST(StorageTest, TestReadRangeEmptyDB) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -68,6 +72,8 @@ TEST(StorageTest, TestReadRangeEmptyDB) {
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
 
+    cli.handleCommand("use testdb");
+
     testing::internal::CaptureStdout();
     cli.handleCommand("readrange 1000 2000");
     std::string output = testing::internal::GetCapturedStdout();
@@ -76,7 +82,7 @@ TEST(StorageTest, TestReadRangeEmptyDB) {
 }
 
 TEST(StorageTest, TestReadRangeMultipleRecords) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -95,6 +101,8 @@ TEST(StorageTest, TestReadRangeMultipleRecords) {
 
     EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 1600"));
 
+    cli.handleCommand("use testdb");
+
     testing::internal::CaptureStdout();
     cli.handleCommand("readrange 1000 1600");
     std::string output = testing::internal::GetCapturedStdout();
@@ -106,7 +114,7 @@ TEST(StorageTest, TestReadRangeMultipleRecords) {
 }
 
 TEST(StorageTest, TestValidReadFromCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -121,6 +129,8 @@ TEST(StorageTest, TestValidReadFromCommand) {
 
     EXPECT_TRUE(cli.validateReadFromCommand("readfrom 1000"));
 
+    cli.handleCommand("use testdb");
+
     testing::internal::CaptureStdout();
 
     cli.handleCommand("readfrom 1000");
@@ -130,7 +140,7 @@ TEST(StorageTest, TestValidReadFromCommand) {
 }
 
 TEST(StorageTest, TestInvalidReadFromCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -143,6 +153,8 @@ TEST(StorageTest, TestInvalidReadFromCommand) {
 
     EXPECT_FALSE(cli.validateReadFromCommand("readfrom abc"));
     EXPECT_FALSE(cli.validateReadFromCommand("readfrom 1000 extra"));
+
+    cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
 
@@ -157,7 +169,7 @@ TEST(StorageTest, TestInvalidReadFromCommand) {
 }
 
 TEST(StorageTest, TestValidAppendCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -165,6 +177,8 @@ TEST(StorageTest, TestValidAppendCommand) {
     TSDBCLI cli;
 
     EXPECT_TRUE(cli.validateAppendCommand("append 1000 42.0"));
+
+    cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
 
@@ -175,7 +189,7 @@ TEST(StorageTest, TestValidAppendCommand) {
 }
 
 TEST(StorageTest, TestInvalidAppendCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -185,6 +199,8 @@ TEST(StorageTest, TestInvalidAppendCommand) {
     EXPECT_FALSE(cli.validateAppendCommand("append 1000"));
     EXPECT_FALSE(cli.validateAppendCommand("append abc def"));
     EXPECT_FALSE(cli.validateAppendCommand("append 1000 42.0 extra"));
+
+    cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
 
@@ -201,7 +217,7 @@ TEST(StorageTest, TestInvalidAppendCommand) {
 }
 
 TEST(StorageTest, TestMonotonicAppendCommand) {
-    const char* filename = "testdb.txt";
+    const char* filename = "testdb.tsdb";
     std::remove(filename);
 
     Storage s(filename);
@@ -216,6 +232,8 @@ TEST(StorageTest, TestMonotonicAppendCommand) {
 
     EXPECT_TRUE(cli.validateAppendCommand("append 900 42.5"));
     EXPECT_TRUE(cli.validateAppendCommand("append 1000 43.0"));
+
+    cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
 
