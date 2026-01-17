@@ -4,16 +4,15 @@ This project is a simple **Time Series Database (TSDB)** implemented in C++ from
 
 ## Features
 
-| Feature                         | Description                                                                                                  | Progress                                                       |
-|---------------------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| **Binary Storage Format**       | Store records in a compact binary format for faster read/write and smaller disk usage                        | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
-| **Data Integrity and Recovery** | Implement safe recovery mechanisms and atomic writes to durable storage to prevent corruption during crashes | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
-| **Indexing**                    | Build lightweight indexes to speed up queries and range scans                                                | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
-| **Random Access Reads**         | Allow querying specific time ranges or individual timestamps without reading the entire file                 | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
-| **Concurrency**                 | Support multi-threaded reads and writes with proper synchronization                                          | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed) |
-| **CLI and API**                 | Provide a command-line interface and C++ API for inserting, querying, and managing time series data          | ![Progress Bar](https://progress-bar.xyz/25/?title=Development)   |
-| **Multi-Series Support**        | Manage multiple independent time series in a single database instance                                        | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
-| **Performance Metrics**         | Track append rates, query times, and storage size to benchmark improvements                                  | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)   |
+| Feature                         | Description                                                                                                  | Progress                                                        |
+|---------------------------------|--------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| **Binary Storage Format**       | Store records in a compact binary format for faster read/write and smaller disk usage                        | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed)  |
+| **Data Integrity and Recovery** | Implement safe recovery mechanisms and atomic writes to durable storage to prevent corruption during crashes | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed)  |
+| **Indexing**                    | Build lightweight indexes to speed up queries and range scans                                                | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed)  |
+| **Random Access Reads**         | Allow querying specific time ranges or individual timestamps without reading the entire file                 | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed)  |
+| **Concurrency**                 | Support multi-threaded reads and writes with proper synchronization                                          | ![Progress Bar](https://progress-bar.xyz/100/?title=Completed)  |
+| **Command Line Interface**      | Provide a command-line interface for inserting, querying, and managing time series data                      | ![Progress Bar](https://progress-bar.xyz/40/?title=Development) |
+| **Performance Metrics**         | Track append rates, query times, and storage size to benchmark improvements                                  | ![Progress Bar](https://progress-bar.xyz/10/?title=Planning)    |
 
 ## Technology Stack
 ![C++](https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white)

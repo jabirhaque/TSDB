@@ -172,6 +172,13 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     return records;
 }
 
+std::optional<Record> Storage::readFromTime(int64_t timestamp) const
+{
+    std::vector<Record> result = readRange(timestamp, timestamp);
+    if (result.empty()) return std::nullopt;
+    return result.front();
+}
+
 std::optional<Record> Storage::getLastRecord() const
 {
     std::ifstream inFile(filename, std::ios::binary);

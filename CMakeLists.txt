@@ -8,11 +8,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(TSDB
         main.cpp
         src/Storage.cpp
+        src/TSDBCLI.cpp
 )
 
 add_executable(TSDB_tests
         tests/TestStorage.cpp
+        tests/TestTSDBCLI.cpp
         src/Storage.cpp
+        src/TSDBCLI.cpp
 )
 
 find_package(ZLIB REQUIRED)

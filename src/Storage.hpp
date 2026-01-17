@@ -22,6 +22,7 @@ public:
     //read functions
     std::vector<Record> readAll() const;
     std::vector<Record> readRange(int64_t startTs, int64_t endTs) const;
+    std::optional<Record> readFromTime(int64_t timestamp) const;
     std::optional<Record> getLastRecord() const;
     Record getRecord(size_t index) const;
 
