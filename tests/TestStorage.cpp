@@ -368,7 +368,7 @@ TEST(StorageTest, SparseIndexTest) {
     const char* filename = "testdb.tsdb";
     std::remove(filename);
 
-    Storage s(filename);
+    Storage s(filename, 4);
     ASSERT_EQ(s.getSparseIndexStep(), 4);
     ASSERT_TRUE(s.getSparseIndex().empty());
 
@@ -398,7 +398,7 @@ TEST(StorageTest, SparseIndexTest) {
     ASSERT_EQ(sparseIndex[1].timestamp, 1400);
     ASSERT_EQ(sparseIndex[1].recordIndex, 4);
 
-    Storage s2(filename);
+    Storage s2(filename, 4);
     const std::vector<IndexEntry>& sparseIndex2 = s2.getSparseIndex();
     ASSERT_EQ(s2.getSparseIndexStep(), 4);
     ASSERT_EQ(sparseIndex2.size(), 2);
