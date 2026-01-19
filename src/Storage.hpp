@@ -11,7 +11,7 @@ class Storage
 {
 public:
     //constructor
-    explicit Storage(const std::string& filename);
+    explicit Storage(const std::string& filename, size_t sparseIndexStep = 1024);
 
     //destructor
     ~Storage();
@@ -44,7 +44,7 @@ private:
     int fd;
 
     //sparse index
-    const size_t sparseIndexStep{4};
+    const size_t sparseIndexStep;
     std::vector<IndexEntry> sparseIndex;
 
     //buffers

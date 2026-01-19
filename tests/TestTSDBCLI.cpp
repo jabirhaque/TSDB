@@ -39,6 +39,19 @@ TEST(StorageTest, CreateCommandExistingDB) {
     EXPECT_EQ(output, "Database already exists\n");
 }
 
+TEST(StorageTest, CreateCommandReservedDBName) {
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateCreateCommand("create performance"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("create performance");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "The database name 'performance' is reserved for performance metric mode. Please choose a different name.\n");
+}
+
 TEST(StorageTest, ValidUseCommand) {
     TSDBCLI cli;
 

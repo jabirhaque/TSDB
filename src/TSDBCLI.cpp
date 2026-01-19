@@ -26,6 +26,7 @@ void TSDBCLI::printHelp() const
     std::cout << "TSDB Command Line Interface\n";
     std::cout << "Commands:\n";
     std::cout << "  help                       - Show this help message\n";
+    std::cout << "  performance                - Enter performance metric mode \n";
     std::cout << "  create <database>          - Create a new database\n";
     std::cout << "  use <database>             - Use the specified database\n";
     std::cout << "  readall                    - Read and display all records\n";
@@ -41,11 +42,126 @@ void TSDBCLI::handleCommand(const std::string& command)
     {
         printHelp();
     }
+    else if (command == "performance")
+    {
+        std::cout << "Entering performance metric mode...\n";
+        std::string db = "performance.tsdb";
+
+        if (std::filesystem::exists(db))
+        {
+            std::cout << "Database already exists\n"; //TODO: protect this database name
+            return;
+        }
+
+        if (storage)
+        {
+            storage.reset();
+        }
+        storage = std::make_unique<Storage>(db);
+
+        std::cout << "Performance metric mode activated. Starting performance tests...\n";
+
+        const int producerCount = 4;
+        const int recordsPerProducer = 1'000'000 / producerCount;
+
+        std::vector<std::thread> producers;
+        std::vector<long long> appendTimes;
+        std::vector<int64_t> timestamps;
+        long long totalAppendTime = 0;
+        std::mutex mtx;
+
+        for (int p = 0; p < producerCount; ++p)
+        {
+            producers.emplace_back([&, p]() {
+                std::vector<long long> local_times;
+                std::vector<int64_t> local_timestamps;
+                local_times.reserve(recordsPerProducer);
+                long long local_total = 0;
+
+                for (int i = 0; i < recordsPerProducer; ++i)
+                {
+                    Record r;
+                    r.timestamp = p * 1'000'000 + i;
+                    r.value = static_cast<double>(i);
+
+                    auto start = std::chrono::high_resolution_clock::now();
+                    bool accepted = (*storage).append(r);
+                    auto end = std::chrono::high_resolution_clock::now();
+
+                    long long duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+                    local_times.push_back(duration_ns);
+                    if (accepted) local_timestamps.push_back(r.timestamp);
+                    local_total += duration_ns;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(mtx);
+                    appendTimes.insert(appendTimes.end(), local_times.begin(), local_times.end());
+                    timestamps.insert(timestamps.end(), local_timestamps.begin(), local_timestamps.end());
+                    totalAppendTime += local_total;
+                }
+            });
+        }
+
+        for (auto& t : producers)
+        {
+            t.join();
+        }
+
+        std::cout << "Average append time: " << (totalAppendTime / appendTimes.size()) << " ns\n";
+
+        std::sort(appendTimes.begin(), appendTimes.end());
+        long long p99 = appendTimes[appendTimes.size() * 99 / 100];
+        long long p95 = appendTimes[appendTimes.size() * 95 / 100];
+        long long p50 = appendTimes[appendTimes.size() / 2];
+
+        std::cout << "p50 append time: " << p50 << " ns\n";
+        std::cout << "p95 append time: " << p95 << " ns\n";
+        std::cout << "p99 append time: " << p99 << " ns\n";
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        std::vector<long long> readFromTimes;
+        long long totalReadFromTime = 0;
+
+        for (int i=0; i<timestamps.size(); i+=100)
+        {
+            int64_t ts = timestamps[i];
+            auto start = std::chrono::high_resolution_clock::now();
+            (*storage).readFromTime(ts);
+            auto end = std::chrono::high_resolution_clock::now();
+
+            long long duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+            readFromTimes.push_back(duration_ns);
+            totalReadFromTime += duration_ns;
+        }
+
+        std::cout << "\nAverage read from time: " << static_cast<double>((totalReadFromTime / readFromTimes.size()))/1000 << " ms\n";
+
+        std::sort(readFromTimes.begin(), readFromTimes.end());
+        p99 = readFromTimes[readFromTimes.size() * 99 / 100];
+        p95 = readFromTimes[readFromTimes.size() * 95 / 100];
+        p50 = readFromTimes[readFromTimes.size() / 2];
+
+        std::cout << "p50 read from time: " << static_cast<double>(p50)/1000 << " ms\n";
+        std::cout << "p95 read from time: " << static_cast<double>(p95)/1000 << " ms\n";
+        std::cout << "p99 read from time: " << static_cast<double>(p99)/1000 << " ms\n";
+
+        storage.reset();
+        std::filesystem::remove(db);
+        std::cout << "Performance metric mode exited. Database deleted.\n";
+    }
     else if (command.rfind("create ", 0) == 0)
     {
         if (!validateCreateCommand(command))
         {
             std::cout << "Invalid create command. Usage: create <database> where <database> contains letters and numbers only\n";
+            return;
+        }
+
+        if (command == "create performance")
+        {
+            std::cout << "The database name 'performance' is reserved for performance metric mode. Please choose a different name.\n";
             return;
         }
 

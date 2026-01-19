@@ -12,7 +12,7 @@
 #include <iostream>
 
 
-Storage::Storage(const std::string& filename) : filename(filename)
+Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename(filename), sparseIndexStep(sparseIndexStep)
 {
     lastTimestamp = std::numeric_limits<int64_t>::min();
 
