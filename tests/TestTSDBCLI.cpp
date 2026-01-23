@@ -107,7 +107,7 @@ TEST(StorageTest, TestValidReadRangeCommand) {
 
     TSDBCLI cli;
 
-    EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("readrange ","readrange 1000 2000"));
 
     cli.handleCommand("use testdb");
 
@@ -131,9 +131,9 @@ TEST(StorageTest, TestInvalidReadRangeCommand) {
 
     TSDBCLI cli;
 
-    EXPECT_FALSE(cli.validateReadRangeCommand("readrange 1000"));
-    EXPECT_FALSE(cli.validateReadRangeCommand("readrange abc def"));
-    EXPECT_FALSE(cli.validateReadRangeCommand("readrange 1000 2000 extra"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("readrange ","readrange 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("readrange ","readrange abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("readrange ","readrange 1000 2000 extra"));
 
     cli.handleCommand("use testdb");
 
@@ -161,7 +161,7 @@ TEST(StorageTest, TestReadRangeEmptyDB) {
 
     TSDBCLI cli;
 
-    EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 2000"));
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("readrange ","readrange 1000 2000"));
 
     cli.handleCommand("use testdb");
 
@@ -190,7 +190,7 @@ TEST(StorageTest, TestReadRangeMultipleRecords) {
 
     TSDBCLI cli;
 
-    EXPECT_TRUE(cli.validateReadRangeCommand("readrange 1000 1600"));
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("readrange ","readrange 1000 1600"));
 
     cli.handleCommand("use testdb");
 

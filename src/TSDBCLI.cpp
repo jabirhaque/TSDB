@@ -284,7 +284,7 @@ void TSDBCLI::handleCommand(const std::string& command)
             std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
             return;
         }
-        if (!validateReadRangeCommand(command))
+        if (!validateGeneralRangeCommand("readrange ", command))
         {
             std::cout << "Invalid readrange command. Usage: readrange <start> <end>\n";
             return;
@@ -338,6 +338,43 @@ void TSDBCLI::handleCommand(const std::string& command)
         if (success) std::cout << "Record accepted, pending persistence\n";
         else std::cout << "Failed to accept record.\n";
     }
+    else if (command == "count")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        size_t count = (*storage).readAll().size();
+        std::cout << "Total records: " << count << "\n";
+    }
+    else if (command.rfind("count ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("count ", command))
+        {
+            std::cout << "Invalid count command. Usage: count <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        size_t count = (*storage).readRange(number1, number2).size();
+        std::cout << "Total records: " << count << "\n";
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
@@ -376,30 +413,6 @@ bool TSDBCLI::validateUseCommand(const std::string& command)
         if (!(int(c) >= 48 && int(c) <= 57) && !(int(c) >= 65 && int(c) <= 90) && !(int(c) >= 97 && int(c) <= 122)){
             return false;
         }
-    }
-    return true;
-}
-
-bool TSDBCLI::validateReadRangeCommand(const std::string& command)
-{
-    const std::string prefix = "readrange ";
-    if (command.rfind(prefix, 0) != 0) {
-        return false;
-    }
-    std::string remainder = command.substr(prefix.size());
-    if (remainder.empty()) {
-        return false;
-    }
-
-    std::istringstream iss(remainder);
-
-    int64_t number1, number2;
-    std::string extra;
-    if (!(iss >> number1 >> number2)) {
-        return false;
-    }
-    if (iss >> extra) {
-        return false;
     }
     return true;
 }
@@ -446,6 +459,29 @@ bool TSDBCLI::validateAppendCommand(const std::string& command)
 
     std::string extra;
     if (!(iss >> timestamp >> value)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
+}
+
+bool TSDBCLI::validateGeneralRangeCommand(std::string prefix, const std::string& command)
+{
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int64_t number1, number2;
+    std::string extra;
+    if (!(iss >> number1 >> number2)) {
         return false;
     }
     if (iss >> extra) {
