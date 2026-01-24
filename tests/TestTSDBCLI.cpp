@@ -337,3 +337,163 @@ TEST(StorageTest, TestMonotonicAppendCommand) {
         "Failed to accept record.\n"
         );
 }
+
+TEST(StorageTest, TestValidCountCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("count");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Total records: 1\n");
+}
+
+TEST(StorageTest, TestValidCountCommandMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("count");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Total records: 3\n");
+}
+
+TEST(StorageTest, TestValidCountRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("count ","count 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("count 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Total records: 1\n");
+}
+
+TEST(StorageTest, TestInvalidCountRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("count ","count 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("count ","count abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("count ","count 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("count 1000");
+    cli.handleCommand("count abc def");
+    cli.handleCommand("count 1000 2000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid count command. Usage: count <start> <end>\n"
+        "Invalid count command. Usage: count <start> <end>\n"
+        "Invalid count command. Usage: count <start> <end>\n"
+        );
+}
+
+TEST(StorageTest, TestCountRangeEmptyDB) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("count ","count 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("count 1000 2000");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Total records: 0\n");
+}
+
+TEST(StorageTest, TestCountRangeMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("count ","count 1000 1600"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("count 1000 1600");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Total records: 2\n");
+}
