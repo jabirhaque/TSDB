@@ -426,6 +426,57 @@ void TSDBCLI::handleCommand(const std::string& command)
             std::cout << "Timestamp: " << records.front().timestamp << ", Value: " << records.front().value << "\n";
         }
     }
+    else if (command == "last")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.back().timestamp << ", Value: " << records.back().value << "\n";
+        }
+    }
+    else if (command.rfind("last ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("last ", command))
+        {
+            std::cout << "Invalid last command. Usage: last <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.back().timestamp << ", Value: " << records.back().value << "\n";
+        }
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
