@@ -46,7 +46,7 @@ void TSDBCLI::printHelp() const
 
     std::cout << "Aggregate Functions:\n";
     std::cout << "  count <start> <end>           Count records\n";
-    std::cout << "  first <start> <end>           First value\n";
+    std::cout << "  first <start> <end>           First values\n";
     std::cout << "  last <start> <end>            Last value\n";
     std::cout << "  sum <start> <end>             Sum of values\n";
     std::cout << "  min <start> <end>             Minimum value\n";
@@ -374,6 +374,57 @@ void TSDBCLI::handleCommand(const std::string& command)
 
         size_t count = (*storage).readRange(number1, number2).size();
         std::cout << "Total records: " << count << "\n";
+    }
+    else if (command == "first")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.front().timestamp << ", Value: " << records.front().value << "\n";
+        }
+    }
+    else if (command.rfind("first ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("first ", command))
+        {
+            std::cout << "Invalid first command. Usage: first <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.front().timestamp << ", Value: " << records.front().value << "\n";
+        }
     }
     else
     {
