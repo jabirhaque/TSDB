@@ -1433,3 +1433,181 @@ TEST(StorageTest, TestMaxRangeMultipleRecords) {
 
     EXPECT_EQ(output, "Maximum of values: 43.5\n");
 }
+
+TEST(StorageTest, TestValidAvgCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("avg");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Average of values: 42\n");
+}
+
+TEST(StorageTest, TestValidAvgCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("avg");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestValidAvgRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("avg ","avg 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("avg 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Average of values: 42\n");
+}
+
+TEST(StorageTest, TestValidAvgRangeCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("avg ","avg 1000 2000"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("avg 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestInvalidAvgRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("avg ","avg 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("avg ","avg abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("avg ","avg 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("avg 1000");
+    cli.handleCommand("avg abc def");
+    cli.handleCommand("avg 1000 2000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid last command. Usage: avg <start> <end>\n"
+        "Invalid last command. Usage: avg <start> <end>\n"
+        "Invalid last command. Usage: avg <start> <end>\n"
+        );
+}
+
+TEST(StorageTest, TestAvgRangeEmptyDB) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("avg ","avg 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("avg 1000 2000");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "No record found\n");
+}
+
+TEST(StorageTest, TestAvgRangeMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("avg ","avg 1000 1600"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("avg 1000 1600");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Average of values: 42.75\n");
+}

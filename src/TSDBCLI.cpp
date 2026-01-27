@@ -616,6 +616,55 @@ void TSDBCLI::handleCommand(const std::string& command)
         for (const Record& r: records) max = std::max(max, r.value);
         std::cout << "Maximum of values: " << max << "\n";
     }
+    else if (command == "avg")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double sum = 0;
+        for (const Record& r: records) sum += r.value;
+        std::cout << "Average of values: " << sum/records.size() << "\n";
+    }
+    else if (command.rfind("avg ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("avg ", command))
+        {
+            std::cout << "Invalid last command. Usage: avg <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double sum = 0;
+        for (const Record& r: records) sum += r.value;
+        std::cout << "Average of values: " << sum/records.size() << "\n";
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
