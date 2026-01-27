@@ -899,3 +899,181 @@ TEST(StorageTest, TestLastRangeMultipleRecords) {
 
     EXPECT_EQ(output, "Timestamp: 1500, Value: 43.5\n");
 }
+
+TEST(StorageTest, TestValidSumCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("sum");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Sum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidSumCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("sum");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestValidSumRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("sum ","sum 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("sum 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Sum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidSumRangeCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("sum ","sum 1000 2000"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("sum 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestInvalidSumRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("sum ","sum 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("sum ","sum abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("sum ","sum 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("sum 1000");
+    cli.handleCommand("sum abc def");
+    cli.handleCommand("sum 1000 2000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid last command. Usage: sum <start> <end>\n"
+        "Invalid last command. Usage: sum <start> <end>\n"
+        "Invalid last command. Usage: sum <start> <end>\n"
+        );
+}
+
+TEST(StorageTest, TestSumRangeEmptyDB) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("sum ","sum 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("sum 1000 2000");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Sum of values: 0\n");
+}
+
+TEST(StorageTest, TestSumRangeMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("sum ","sum 1000 1600"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("sum 1000 1600");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Sum of values: 85.5\n");
+}
