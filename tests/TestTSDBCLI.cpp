@@ -1077,3 +1077,359 @@ TEST(StorageTest, TestSumRangeMultipleRecords) {
 
     EXPECT_EQ(output, "Sum of values: 85.5\n");
 }
+
+TEST(StorageTest, TestValidMinCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("min");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Minimum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMinCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("min");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestValidMinRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("min ","min 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("min 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Minimum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMinRangeCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("min ","min 1000 2000"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("min 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestInvalidMinRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("min ","min 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("min ","min abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("min ","min 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("min 1000");
+    cli.handleCommand("min abc def");
+    cli.handleCommand("min 1000 2000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid last command. Usage: min <start> <end>\n"
+        "Invalid last command. Usage: min <start> <end>\n"
+        "Invalid last command. Usage: min <start> <end>\n"
+        );
+}
+
+TEST(StorageTest, TestMinRangeEmptyDB) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("min ","min 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("min 1000 2000");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "No record found\n");
+}
+
+TEST(StorageTest, TestMinRangeMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("min ","min 1000 1600"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("min 1000 1600");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Minimum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMaxCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("max");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Maximum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMaxCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("max");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestValidMaxRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("max ","max 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("max 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Maximum of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMaxRangeCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("max ","max 1000 2000"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("max 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestInvalidMaxRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("max ","max 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("max ","max abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("max ","max 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("max 1000");
+    cli.handleCommand("max abc def");
+    cli.handleCommand("max 1000 2000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid last command. Usage: max <start> <end>\n"
+        "Invalid last command. Usage: max <start> <end>\n"
+        "Invalid last command. Usage: max <start> <end>\n"
+        );
+}
+
+TEST(StorageTest, TestMaxRangeEmptyDB) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("max ","max 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("max 1000 2000");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "No record found\n");
+}
+
+TEST(StorageTest, TestMaxRangeMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("max ","max 1000 1600"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("max 1000 1600");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Maximum of values: 43.5\n");
+}
