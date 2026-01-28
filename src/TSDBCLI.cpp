@@ -25,16 +25,40 @@ void TSDBCLI::run()
 void TSDBCLI::printHelp() const
 {
     std::cout << "TSDB Command Line Interface\n";
-    std::cout << "Commands:\n";
-    std::cout << "  help                       - Show this help message\n";
-    std::cout << "  performance                - Enter performance metric mode \n";
-    std::cout << "  create <database>          - Create a new database\n";
-    std::cout << "  use <database>             - Use the specified database\n";
-    std::cout << "  readall                    - Read and display all records\n";
-    std::cout << "  readfrom <timestamp>       - Read record from the specified timestamp\n";
-    std::cout << "  readrange <start> <end>    - Read records in the specified time range\n";
-    std::cout << "  append <timestamp> <value> - Append a new record\n";
-    std::cout << "  exit, quit                 - Exit the CLI\n";
+    std::cout << "===========================\n\n";
+
+    std::cout << "General Commands:\n";
+    std::cout << "  help                          Show this help message\n";
+    std::cout << "  performance                   Enter performance metric mode\n";
+    std::cout << "  exit | quit                   Exit the CLI\n\n";
+
+    std::cout << "Database Commands:\n";
+    std::cout << "  create <database>             Create a new database\n";
+    std::cout << "  use <database>                Switch to an existing database\n\n";
+
+    std::cout << "Data Ingestion:\n";
+    std::cout << "  append <timestamp> <value>    Append a new data point\n\n";
+
+    std::cout << "Read Queries:\n";
+    std::cout << "  readall                       Read and display all records\n";
+    std::cout << "  readfrom <timestamp>          Read records from a timestamp\n";
+    std::cout << "  readrange <start> <end>       Read records in a time range\n\n";
+
+    std::cout << "Aggregate Functions:\n";
+    std::cout << "  count <start> <end>           Count records\n";
+    std::cout << "  first <start> <end>           First values\n";
+    std::cout << "  last <start> <end>            Last value\n";
+    std::cout << "  sum <start> <end>             Sum of values\n";
+    std::cout << "  min <start> <end>             Minimum value\n";
+    std::cout << "  max <start> <end>             Maximum value\n";
+    std::cout << "  avg <start> <end>             Average value\n";
+    std::cout << "  median <start> <end>          Median value\n";
+    std::cout << "  percentile <p> <start> <end>  Pth percentile (0–100)\n";
+    std::cout << "  stddev <start> <end>          Standard deviation\n";
+    std::cout << "  variance <start> <end>        Variance\n\n";
+
+    std::cout << "  Note: if <start> <end> are omitted, the full time series is used\n\n";
+
 }
 
 void TSDBCLI::handleCommand(const std::string& command)
@@ -50,7 +74,7 @@ void TSDBCLI::handleCommand(const std::string& command)
 
         if (std::filesystem::exists(db))
         {
-            std::cout << "Database already exists\n"; //TODO: protect this database name
+            std::cout << "Database already exists\n";
             return;
         }
 
@@ -260,7 +284,7 @@ void TSDBCLI::handleCommand(const std::string& command)
             std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
             return;
         }
-        if (!validateReadRangeCommand(command))
+        if (!validateGeneralRangeCommand("readrange ", command))
         {
             std::cout << "Invalid readrange command. Usage: readrange <start> <end>\n";
             return;
@@ -314,6 +338,386 @@ void TSDBCLI::handleCommand(const std::string& command)
         if (success) std::cout << "Record accepted, pending persistence\n";
         else std::cout << "Failed to accept record.\n";
     }
+    else if (command == "count")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        size_t count = (*storage).readAll().size();
+        std::cout << "Total records: " << count << "\n";
+    }
+    else if (command.rfind("count ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("count ", command))
+        {
+            std::cout << "Invalid count command. Usage: count <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        size_t count = (*storage).readRange(number1, number2).size();
+        std::cout << "Total records: " << count << "\n";
+    }
+    else if (command == "first")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.front().timestamp << ", Value: " << records.front().value << "\n";
+        }
+    }
+    else if (command.rfind("first ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("first ", command))
+        {
+            std::cout << "Invalid first command. Usage: first <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.front().timestamp << ", Value: " << records.front().value << "\n";
+        }
+    }
+    else if (command == "last")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.back().timestamp << ", Value: " << records.back().value << "\n";
+        }
+    }
+    else if (command.rfind("last ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("last ", command))
+        {
+            std::cout << "Invalid last command. Usage: last <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+        }
+        else
+        {
+            std::cout << "Timestamp: " << records.back().timestamp << ", Value: " << records.back().value << "\n";
+        }
+    }
+    else if (command == "sum")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        double sum = 0;
+        for (const Record& r: records) sum += r.value;
+        std::cout << "Sum of values: " << sum << "\n";
+    }
+    else if (command.rfind("sum ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("sum ", command))
+        {
+            std::cout << "Invalid last command. Usage: sum <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        double sum = 0;
+        for (const Record& r: records) sum += r.value;
+        std::cout << "Sum of values: " << sum << "\n";
+    }
+    else if (command == "min")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double min = double(records.front().value);
+        for (const Record& r: records) min = std::min(min, r.value);
+        std::cout << "Minimum of values: " << min << "\n";
+    }
+    else if (command.rfind("min ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("min ", command))
+        {
+            std::cout << "Invalid last command. Usage: min <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double min = double(records.front().value);
+        for (const Record& r: records) min = std::min(min, r.value);
+        std::cout << "Minimum of values: " << min << "\n";
+    }
+    else if (command == "max")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double max = double(records.front().value);
+        for (const Record& r: records) max = std::max(max, r.value);
+        std::cout << "Maximum of values: " << max << "\n";
+    }
+    else if (command.rfind("max ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("max ", command))
+        {
+            std::cout << "Invalid last command. Usage: max <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double max = double(records.front().value);
+        for (const Record& r: records) max = std::max(max, r.value);
+        std::cout << "Maximum of values: " << max << "\n";
+    }
+    else if (command == "avg")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double sum = 0;
+        for (const Record& r: records) sum += r.value;
+        std::cout << "Average of values: " << sum/records.size() << "\n";
+    }
+    else if (command.rfind("avg ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("avg ", command))
+        {
+            std::cout << "Invalid last command. Usage: avg <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        double sum = 0;
+        for (const Record& r: records) sum += r.value;
+        std::cout << "Average of values: " << sum/records.size() << "\n";
+    }
+    else if (command == "median")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
+                  return a.value < b.value;
+              });
+        size_t i = records.size()/2;
+        std::cout << "Median of values: " << records[i].value << "\n";
+    }
+    else if (command.rfind("median ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("median ", command))
+        {
+            std::cout << "Invalid last command. Usage: median <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
+                  return a.value < b.value;
+              });
+        size_t i = records.size()/2;
+        std::cout << "Median of values: " << records[i].value << "\n";
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
@@ -352,30 +756,6 @@ bool TSDBCLI::validateUseCommand(const std::string& command)
         if (!(int(c) >= 48 && int(c) <= 57) && !(int(c) >= 65 && int(c) <= 90) && !(int(c) >= 97 && int(c) <= 122)){
             return false;
         }
-    }
-    return true;
-}
-
-bool TSDBCLI::validateReadRangeCommand(const std::string& command)
-{
-    const std::string prefix = "readrange ";
-    if (command.rfind(prefix, 0) != 0) {
-        return false;
-    }
-    std::string remainder = command.substr(prefix.size());
-    if (remainder.empty()) {
-        return false;
-    }
-
-    std::istringstream iss(remainder);
-
-    int64_t number1, number2;
-    std::string extra;
-    if (!(iss >> number1 >> number2)) {
-        return false;
-    }
-    if (iss >> extra) {
-        return false;
     }
     return true;
 }
@@ -422,6 +802,29 @@ bool TSDBCLI::validateAppendCommand(const std::string& command)
 
     std::string extra;
     if (!(iss >> timestamp >> value)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
+}
+
+bool TSDBCLI::validateGeneralRangeCommand(std::string prefix, const std::string& command)
+{
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int64_t number1, number2;
+    std::string extra;
+    if (!(iss >> number1 >> number2)) {
         return false;
     }
     if (iss >> extra) {
