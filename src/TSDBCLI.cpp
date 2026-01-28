@@ -74,7 +74,7 @@ void TSDBCLI::handleCommand(const std::string& command)
 
         if (std::filesystem::exists(db))
         {
-            std::cout << "Database already exists\n"; //TODO: protect this database name
+            std::cout << "Database already exists\n";
             return;
         }
 
@@ -664,6 +664,59 @@ void TSDBCLI::handleCommand(const std::string& command)
         double sum = 0;
         for (const Record& r: records) sum += r.value;
         std::cout << "Average of values: " << sum/records.size() << "\n";
+    }
+    else if (command == "median")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
+                  return a.value < b.value;
+              });
+        size_t i = records.size()/2;
+        std::cout << "Median of values: " << records[i].value << "\n";
+    }
+    else if (command.rfind("median ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("median ", command))
+        {
+            std::cout << "Invalid last command. Usage: median <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty()) {
+            std::cout << "No record found\n";
+            return;
+        }
+        std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
+                  return a.value < b.value;
+              });
+        size_t i = records.size()/2;
+        std::cout << "Median of values: " << records[i].value << "\n";
     }
     else
     {

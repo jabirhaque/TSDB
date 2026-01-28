@@ -1591,23 +1591,225 @@ TEST(StorageTest, TestAvgRangeMultipleRecords) {
 
     Record r1 {1000, 42.0};
     Record r2 {1500, 43.5};
-    Record r3 {2000, 44.25};
+    Record r3 {2000, 45.0};
+    Record r4 {2500, 46.5};
+    Record r5 {3000, 48.0};
+    Record r6 {3500, 49.0};
+    Record r7 {4000, 44.12};
+    Record r8 {4500, 43.5};
+    Record r9 {5000, 44.25};
 
     s.append(r1);
     s.append(r2);
     s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+    s.append(r8);
+    s.append(r9);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     TSDBCLI cli;
 
-    EXPECT_TRUE(cli.validateGeneralRangeCommand("avg ","avg 1000 1600"));
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("avg ","avg 900 3600"));
 
     cli.handleCommand("use testdb");
 
     testing::internal::CaptureStdout();
-    cli.handleCommand("avg 1000 1600");
+    cli.handleCommand("avg 900 3600");
     std::string output = testing::internal::GetCapturedStdout();
 
-    EXPECT_EQ(output, "Average of values: 42.75\n");
+    EXPECT_EQ(output, "Average of values: 45.6667\n");
+}
+
+TEST(StorageTest, TestValidMedianCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("median");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Median of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMedianCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("median");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestValidMedianRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("median ","median 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("median 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "Median of values: 42\n");
+}
+
+TEST(StorageTest, TestValidMedianRangeCommandNoDatabaseSelected) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+
+    s.append(r1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("median ","median 1000 2000"));
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("median 1000 2000");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output, "No database selected. Use the 'use <database>' command to select a database.\n");
+}
+
+TEST(StorageTest, TestInvalidMedianRangeCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+    Record r {1000, 42.0};
+    s.append(r);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("median ","median 1000"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("median ","median abc def"));
+    EXPECT_FALSE(cli.validateGeneralRangeCommand("median ","median 1000 2000 extra"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("median 1000");
+    cli.handleCommand("median abc def");
+    cli.handleCommand("median 1000 2000 extra");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid last command. Usage: median <start> <end>\n"
+        "Invalid last command. Usage: median <start> <end>\n"
+        "Invalid last command. Usage: median <start> <end>\n"
+        );
+}
+
+TEST(StorageTest, TestMedianRangeEmptyDB) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("median ","median 1000 2000"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("median 1000 2000");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "No record found\n");
+}
+
+TEST(StorageTest, TestMedianRangeMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 45.0};
+    Record r4 {2500, 46.5};
+    Record r5 {3000, 48.0};
+    Record r6 {3500, 49.0};
+    Record r7 {4000, 44.12};
+    Record r8 {4500, 43.5};
+    Record r9 {5000, 44.25};
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+    s.append(r8);
+    s.append(r9);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    EXPECT_TRUE(cli.validateGeneralRangeCommand("median ","median 900 3600"));
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+    cli.handleCommand("median 900 3600");
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ(output, "Median of values: 46.5\n");
 }
