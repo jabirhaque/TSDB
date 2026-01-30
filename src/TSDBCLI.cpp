@@ -680,7 +680,7 @@ void TSDBCLI::handleCommand(const std::string& command)
         std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
                   return a.value < b.value;
               });
-        size_t i = records.size()/2;
+        size_t i = (records.size()-1)/2;
         std::cout << "Median of values: " << records[i].value << "\n";
     }
     else if (command.rfind("median ", 0) == 0)
@@ -715,13 +715,128 @@ void TSDBCLI::handleCommand(const std::string& command)
         std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
                   return a.value < b.value;
               });
-        size_t i = records.size()/2;
-        std::cout << "Median of values: " << records[i].value << "\n";
+        size_t index = (records.size()-1)/2;
+        std::cout << "Median of values: " << records[index].value << "\n";
+    }
+    else if (command.rfind("percentile ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (validatePercentileCommand(command))
+        {
+            const std::string prefix = "percentile ";
+            std::string remainder = command.substr(prefix.size());
+
+            std::istringstream iss(remainder);
+
+            int p;
+            std::string extra;
+            iss >> p;
+            if (p < 0 || p > 100)
+            {
+                std::cout << "Percentile value must be between 0 and 100.\n";
+                return;
+            }
+            std::vector<Record> records = (*storage).readAll();
+            if (records.empty())
+            {
+                std::cout << "No records founds.\n";
+            }
+            std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
+                  return a.value < b.value;
+              });
+            size_t index = (records.size()-1) * p / 100;
+            std::cout << p << "th Percentile of values: " << records[index].value << "\n";
+        }
+        else if (validatePercentileRangeCommand(command))
+        {
+            const std::string prefix = "percentile ";
+            std::string remainder = command.substr(prefix.size());
+
+            std::istringstream iss(remainder);
+
+            int p;
+            int64_t startTs, endTs;
+            std::string extra;
+            iss >> p >> startTs >> endTs;
+            if (p < 0 || p > 100)
+            {
+                std::cout << "Percentile value must be between 0 and 100.\n";
+                return;
+            }
+            std::vector<Record> records = (*storage).readRange(startTs, endTs);
+            if (records.empty())
+            {
+                std::cout << "No records founds.\n";
+            }
+            std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
+                  return a.value < b.value;
+              });
+            size_t index = (records.size()-1) * p / 100;
+            std::cout << p << "th Percentile of values: " << records[index].value << "\n";
+        }
+        else
+        {
+            std::cout << "Invalid percentile command. Usage: percentile <p> OR percentile <p> <start> <end>\n";
+            return;
+        }
     }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
     }
+}
+
+bool TSDBCLI::validatePercentileCommand(const std::string& command)
+{
+    const std::string prefix = "percentile ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int p;
+    std::string extra;
+    if (!(iss >> p)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
+}
+
+bool TSDBCLI::validatePercentileRangeCommand(const std::string& command)
+{
+    const std::string prefix = "percentile ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(prefix.size());
+    if (remainder.empty()) {
+        return false;
+    }
+
+    std::istringstream iss(remainder);
+
+    int p;
+    int64_t startTs, endTs;
+    std::string extra;
+    if (!(iss >> p >> startTs >> endTs)) {
+        return false;
+    }
+    if (iss >> extra) {
+        return false;
+    }
+    return true;
 }
 
 bool TSDBCLI::validateCreateCommand(const std::string& command)
@@ -822,9 +937,9 @@ bool TSDBCLI::validateGeneralRangeCommand(std::string prefix, const std::string&
 
     std::istringstream iss(remainder);
 
-    int64_t number1, number2;
+    int64_t startTs, endTs;
     std::string extra;
-    if (!(iss >> number1 >> number2)) {
+    if (!(iss >> startTs >> endTs)) {
         return false;
     }
     if (iss >> extra) {

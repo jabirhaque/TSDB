@@ -1811,5 +1811,5 @@ TEST(StorageTest, TestMedianRangeMultipleRecords) {
     cli.handleCommand("median 900 3600");
     std::string output = testing::internal::GetCapturedStdout();
 
-    EXPECT_EQ(output, "Median of values: 46.5\n");
+    EXPECT_EQ(output, "Median of values: 45\n");
 }
