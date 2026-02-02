@@ -733,7 +733,6 @@ void TSDBCLI::handleCommand(const std::string& command)
             std::istringstream iss(remainder);
 
             int p;
-            std::string extra;
             iss >> p;
             if (p < 0 || p > 100)
             {
@@ -744,6 +743,7 @@ void TSDBCLI::handleCommand(const std::string& command)
             if (records.empty())
             {
                 std::cout << "No records founds.\n";
+                return;
             }
             std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
                   return a.value < b.value;
@@ -760,7 +760,6 @@ void TSDBCLI::handleCommand(const std::string& command)
 
             int p;
             int64_t startTs, endTs;
-            std::string extra;
             iss >> p >> startTs >> endTs;
             if (p < 0 || p > 100)
             {
@@ -771,6 +770,7 @@ void TSDBCLI::handleCommand(const std::string& command)
             if (records.empty())
             {
                 std::cout << "No records founds.\n";
+                return;
             }
             std::sort(records.begin(), records.end(), [](const Record& a, const Record& b) {
                   return a.value < b.value;

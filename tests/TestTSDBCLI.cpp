@@ -1623,7 +1623,7 @@ TEST(StorageTest, TestAvgRangeMultipleRecords) {
 
     EXPECT_EQ(output, "Average of values: 45.6667\n");
 }
-
+// TODO
 TEST(StorageTest, TestValidMedianCommand) {
     const char* filename = "testdb.tsdb";
     std::remove(filename);
@@ -1812,4 +1812,195 @@ TEST(StorageTest, TestMedianRangeMultipleRecords) {
     std::string output = testing::internal::GetCapturedStdout();
 
     EXPECT_EQ(output, "Median of values: 45\n");
+}
+
+TEST(StorageTest, TestPercentageValidateCommand) {
+
+    TSDBCLI cli;
+
+    for (int i=0; i<=100; i++) {
+        std::string command = "percentile " + std::to_string(i);
+        EXPECT_TRUE(cli.validatePercentileCommand(command));
+        EXPECT_FALSE(cli.validatePercentileRangeCommand(command));
+    }
+
+    for (int i=0; i<=100; i++) {
+        std::string command = "percentile " + std::to_string(i) + " 1000 2000";
+        EXPECT_FALSE(cli.validatePercentileCommand(command));
+        EXPECT_TRUE(cli.validatePercentileRangeCommand(command));
+    }
+
+    EXPECT_FALSE(cli.validatePercentileCommand("percentile 57.6"));
+    EXPECT_FALSE(cli.validatePercentileRangeCommand("percentile 57.6 1000 2000"));
+    EXPECT_FALSE(cli.validatePercentileCommand("percentile 10 20"));
+    EXPECT_FALSE(cli.validatePercentileRangeCommand("percentile 10 20 1000 2000"));
+    EXPECT_FALSE(cli.validatePercentileCommand("percentile 10 b"));
+    EXPECT_FALSE(cli.validatePercentileRangeCommand("percentile 10 b 1000 2000"));
+}
+
+TEST(StorageTest, TestValidPercentageCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {2000, 43.5};
+
+    s.append(r1);
+    s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("percentile 50");
+    cli.handleCommand("percentile 100");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "50th Percentile of values: 42\n"
+        "100th Percentile of values: 43.5\n"
+        );
+}
+
+TEST(StorageTest, TestValidPercentageNoDatabaseCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {2000, 43.5};
+
+    s.append(r1);
+    s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("percentile 50");
+    cli.handleCommand("percentile 100");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "No database selected. Use the 'use <database>' command to select a database.\n"
+        "No database selected. Use the 'use <database>' command to select a database.\n"
+        );
+}
+
+TEST(StorageTest, TestInvalidPercentageCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {2000, 43.5};
+
+    s.append(r1);
+    s.append(r2);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("percentile 50 sdrs");
+    cli.handleCommand("percentile 10.344");
+    cli.handleCommand("percentile -10");
+    cli.handleCommand("percentile 110");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "Invalid percentile command. Usage: percentile <p> OR percentile <p> <start> <end>\n"
+        "Invalid percentile command. Usage: percentile <p> OR percentile <p> <start> <end>\n"
+        "Percentile value must be between 0 and 100.\n"
+        "Percentile value must be between 0 and 100.\n"
+        );
+}
+
+TEST(StorageTest, TestValidPercentageNoRecordsCommand) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("percentile 50");
+    cli.handleCommand("percentile 100");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "No records founds.\n"
+        "No records founds.\n"
+        );
+}
+
+TEST(StorageTest, TestValidPercentageCommandMultipleRecords) {
+    const char* filename = "testdb.tsdb";
+    std::remove(filename);
+
+    Storage s(filename);
+
+    Record r1 {1000, 42.0};
+    Record r2 {1500, 43.5};
+    Record r3 {2000, 45.0};
+    Record r4 {2500, 46.5};
+    Record r5 {3000, 48.0};
+    Record r6 {3500, 49.0}; //TODO
+    Record r7 {4000, 44.12};
+    Record r8 {4500, 43.5};
+    Record r9 {5000, 44.25};
+    Record r10 {5750, 44.92};
+    //[42, 43.5, 43.5, 44.12, 44.25, 44.92, 45.0, 46.5, 48.0, 49.0]
+
+    s.append(r1);
+    s.append(r2);
+    s.append(r3);
+    s.append(r4);
+    s.append(r5);
+    s.append(r6);
+    s.append(r7);
+    s.append(r8);
+    s.append(r9);
+    s.append(r10);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    TSDBCLI cli;
+
+    cli.handleCommand("use testdb");
+
+    testing::internal::CaptureStdout();
+
+    cli.handleCommand("percentile 0");
+    cli.handleCommand("percentile 33");
+    cli.handleCommand("percentile 34");
+    cli.handleCommand("percentile 100");
+
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(output,
+        "0th Percentile of values: 42\n"
+        "33th Percentile of values: 43.5\n"
+        "34th Percentile of values: 44.12\n"
+        "100th Percentile of values: 49\n"
+        );
 }
