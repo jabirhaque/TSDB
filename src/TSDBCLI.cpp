@@ -3,6 +3,7 @@
 #include <sstream>
 #include <filesystem>
 #include <algorithm>
+#include <cmath>
 
 TSDBCLI::TSDBCLI() : storage(nullptr)
 {
