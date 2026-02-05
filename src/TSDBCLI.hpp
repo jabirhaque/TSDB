@@ -9,9 +9,11 @@ public:
     void printHelp() const;
     bool validateCreateCommand(const std::string& command);
     bool validateUseCommand(const std::string& command);
-    bool validateReadRangeCommand(const std::string& command);
     bool validateReadFromCommand(const std::string& command);
+    bool validateGeneralRangeCommand(std::string prefix, const std::string& command);
     bool validateAppendCommand(const std::string& command);
+    bool validatePercentileCommand(const std::string& command);
+    bool validatePercentileRangeCommand(const std::string& command);
     void handleCommand(const std::string& command);
 
 private:

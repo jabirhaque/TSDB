@@ -658,11 +658,11 @@ TEST(StorageTest, ReadRangeLeftFallsOut) {
 
     Storage s(filename);
 
-    Record r1 {1000, 40.0}; // here
+    Record r1 {1000, 40.0};
     Record r2 {1100, 41.0};
     Record r3 {1200, 42.0};
     Record r4 {1300, 43.0};
-    Record r5 {1400, 44.0}; // here
+    Record r5 {1400, 44.0};
     Record r6 {1500, 45.0};
     Record r7 {1600, 46.0};
 
