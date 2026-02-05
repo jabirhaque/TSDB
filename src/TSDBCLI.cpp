@@ -854,6 +854,73 @@ void TSDBCLI::handleCommand(const std::string& command)
         double stddev = std::sqrt(variance);
         std::cout << "Standard Deviation of values: " << stddev << "\n";
     }
+    else if (command == "variance")
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        std::vector<Record> records = (*storage).readAll();
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+            return;
+        }
+        double sum = 0;
+        double sqrSum = 0;
+        for (Record& record: records)
+        {
+            sum += record.value;
+            sqrSum += record.value * record.value;
+        }
+        double exp = sum / records.size();
+        double expSqr = sqrSum / records.size();
+        double variance = expSqr - (exp * exp);
+        std::cout << "Variance of values: " << variance << "\n";
+    }
+    else if (command.rfind("variance ", 0) == 0)
+    {
+        if (!storage)
+        {
+            std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+            return;
+        }
+        if (!validateGeneralRangeCommand("variance ", command))
+        {
+            std::cout << "Invalid last command. Usage: variance <start> <end>\n";
+            return;
+        }
+        std::istringstream iss(command);
+        std::string ignore;
+        int64_t number1, number2;
+
+        iss >> ignore >> number1 >> number2;
+
+        if (number1 > number2)
+        {
+            std::cout << "Invalid time range: start time is greater than end time.\n";
+            return;
+        }
+
+        std::vector<Record> records = (*storage).readRange(number1, number2);
+        if (records.empty())
+        {
+            std::cout << "No record found\n";
+            return;
+        }
+        double sum = 0;
+        double sqrSum = 0;
+        for (Record& record: records)
+        {
+            sum += record.value;
+            sqrSum += record.value * record.value;
+        }
+        double exp = sum / records.size();
+        double expSqr = sqrSum / records.size();
+        double variance = expSqr - (exp * exp);
+        std::cout << "Variance of values: " << variance << "\n";
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
