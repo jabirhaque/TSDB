@@ -153,16 +153,47 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
     size_t numRecords = dataSize / sizeof(Record);
 
-    std::vector<Record> records;
     inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(startRecordIndex*sizeof(Record)), std::ios::beg);
-    for (size_t i=startRecordIndex; i<numRecords; i++)
+
+    size_t leftDisk = startRecordIndex;
+    size_t rightDisk = std::min(startRecordIndex+sparseIndexStep, numRecords-1);
+    std::optional<size_t> lastDiskIndex;
+
+    while (leftDisk <= rightDisk)
+    {
+        size_t mid = leftDisk + (rightDisk - leftDisk) / 2;
+        inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(mid*sizeof(Record)), std::ios::beg);
+
+        Record record;
+        if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record)))
+        {
+            throw std::runtime_error("Failed to read records from file: " + filename);
+        };
+
+        if (record.timestamp >= startTs)
+        {
+            lastDiskIndex = mid;
+            if (mid == 0) break;
+            rightDisk = mid - 1;
+        }
+        else
+        {
+            leftDisk = mid + 1;
+        }
+    }
+
+    if (!lastDiskIndex.has_value()) return {};
+
+    inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(lastDiskIndex.value()*sizeof(Record)), std::ios::beg);
+
+    std::vector<Record> records;
+    for (size_t i=lastDiskIndex.value(); i<numRecords; i++)
     {
         Record record;
         if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record))) {
             throw std::runtime_error("Failed to read records from file: " + filename);
         }
         if (record.timestamp > endTs) break;
-        if (record.timestamp < startTs) continue;
         uint32_t expected = computeCRC(record);
         if (expected != static_cast<uint32_t>(record.crc)) {
             throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
