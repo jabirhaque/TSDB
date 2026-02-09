@@ -921,6 +921,43 @@ void TSDBCLI::handleCommand(const std::string& command)
         double variance = expSqr - (exp * exp);
         std::cout << "Variance of values: " << variance << "\n";
     }
+    else if (command.rfind("mock ", 0) == 0)
+    {
+        if (!validateMockCommand(command))
+        {
+            std::cout << "Invalid mock command. Usage: mock <database> where <database> contains letters and numbers only\n";
+            return;
+        }
+
+        if (command == "mock performance")
+        {
+            std::cout << "The database name 'performance' is reserved for performance metric mode. Please choose a different name.\n";
+            return;
+        }
+
+        std::istringstream iss(command);
+        std::string ignore;
+        std::string db;
+
+        iss >> ignore >> db;
+
+        db += ".tsdb";
+
+        if (std::filesystem::exists(db))
+        {
+            std::cout << "Database already exists\n";
+            return;
+        }
+        if (storage)
+        {
+            storage.reset();
+        }
+        storage = std::make_unique<Storage>(db);
+        for (int i=0; i<1000000; i++)
+        {
+            (*storage).append(Record{i, static_cast<double>(i)});
+        }
+    }
     else
     {
         std::cout << "Unknown command: " << command << "\n";
@@ -972,6 +1009,24 @@ bool TSDBCLI::validatePercentileRangeCommand(const std::string& command)
     }
     if (iss >> extra) {
         return false;
+    }
+    return true;
+}
+
+bool TSDBCLI::validateMockCommand(const std::string& command)
+{
+    const std::string prefix = "mock ";
+    if (command.rfind(prefix, 0) != 0) {
+        return false;
+    }
+    std::string remainder = command.substr(7);
+    if (remainder.empty()) {
+        return false;
+    }
+    for (char c: remainder) {
+        if (!(int(c) >= 48 && int(c) <= 57) && !(int(c) >= 65 && int(c) <= 90) && !(int(c) >= 97 && int(c) <= 122)){
+            return false;
+        }
     }
     return true;
 }

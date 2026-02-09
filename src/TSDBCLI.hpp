@@ -8,6 +8,7 @@ public:
     void run();
     void printHelp() const;
     bool validateCreateCommand(const std::string& command);
+    bool validateMockCommand(const std::string& command);
     bool validateUseCommand(const std::string& command);
     bool validateReadFromCommand(const std::string& command);
     bool validateGeneralRangeCommand(std::string prefix, const std::string& command);
