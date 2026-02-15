@@ -3,7 +3,8 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include <optional>
+
+#include "src/TSDBCLI.hpp"
 
 std::vector<std::string> split(std::string const& line) {
     std::istringstream iss(line);
@@ -55,6 +56,7 @@ void printHelp()
 
 int main() {
     replxx::Replxx rx;
+    TSDBCLI cli;
 
     rx.history_load("history.txt");
 
@@ -80,30 +82,29 @@ int main() {
         if (command == "help") {
             printHelp();
         }
-        else if (command == "add") {
-            if (tokens.size() != 3) {
-                std::cout << "Usage: add <x> <y>\n";
+        else if (command == "performance")
+        {
+            cli.performance();
+        }
+        else if (command == "create")
+        {
+            if (tokens.size() != 2)
+            {
+                std::cout << "Usage: create <name>\n";
                 continue;
             }
-
-            try {
-                double x = std::stod(tokens[1]);
-                double y = std::stod(tokens[2]);
-                std::cout << "Result: " << (x + y) << "\n";
-            } catch (...) {
-                std::cout << "Error: arguments must be numbers\n";
-            }
+            cli.create(tokens[1]);
         }
-        else if (command == "hello") {
-            if (tokens.size() == 1) {
-                std::cout << "hello world\n";
-            } else if (tokens.size() == 2) {
-                std::cout << "hello " << tokens[1] << "\n";
-            } else {
-                std::cout << "Usage: hello [name]\n";
+        else if (command == "use")
+        {
+            if (tokens.size() != 2)
+            {
+                std::cout << "Usage: use <name>\n";
+                continue;
             }
+            cli.use(tokens[1]);
         }
-        else if (command == "exit") {
+        else if (command == "exit" || command == "quit") {
             std::cout << "Goodbye!\n";
             break;
         }

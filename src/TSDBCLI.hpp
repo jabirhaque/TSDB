@@ -5,16 +5,9 @@ class TSDBCLI
 {
 public:
     explicit TSDBCLI();
-    void run();
-    void printHelp() const;
-    bool validateCreateCommand(const std::string& command);
-    bool validateUseCommand(const std::string& command);
-    bool validateReadFromCommand(const std::string& command);
-    bool validateGeneralRangeCommand(std::string prefix, const std::string& command);
-    bool validateAppendCommand(const std::string& command);
-    bool validatePercentileCommand(const std::string& command);
-    bool validatePercentileRangeCommand(const std::string& command);
-    void handleCommand(const std::string& command);
+    void performance();
+    void create(std::string name);
+    void use(std::string name);
 
 private:
     std::unique_ptr<Storage> storage;
