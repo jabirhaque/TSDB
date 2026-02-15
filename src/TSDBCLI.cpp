@@ -59,7 +59,6 @@ void TSDBCLI::printHelp() const
     std::cout << "  variance <start> <end>        Variance\n\n";
 
     std::cout << "  Note: if <start> <end> are omitted, the full time series is used\n\n";
-
 }
 
 void TSDBCLI::handleCommand(const std::string& command)
