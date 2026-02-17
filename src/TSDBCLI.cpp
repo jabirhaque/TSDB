@@ -990,6 +990,12 @@ void TSDBCLI::create(std::string name)
         return;
     }
 
+    if (!validateFileName(name))
+    {
+        std::cout << "The database name must consist of A-Z, a-z or 0-9 characters only. Please choose a different name.\n";
+        return;
+    }
+
     name += ".tsdb";
 
     if (std::filesystem::exists(name))
@@ -1006,6 +1012,12 @@ void TSDBCLI::create(std::string name)
 
 void TSDBCLI::use(std::string name)
 {
+    if (!validateFileName(name))
+    {
+        std::cout << "The database name must consist of A-Z, a-z or 0-9 characters only. Please choose a different name.\n";
+        return;
+    }
+
     name += ".tsdb";
 
     if (!std::filesystem::exists(name))
@@ -1018,4 +1030,77 @@ void TSDBCLI::use(std::string name)
         storage.reset();
     }
     storage = std::make_unique<Storage>(name);
+}
+
+bool TSDBCLI::validateFileName(const std::string& name)
+{
+    if (name.empty()) return false;
+    for (char c : name)
+    {
+        if (!std::isalnum(c))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void TSDBCLI::readall()
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    std::vector<Record> records = (*storage).readAll();
+    for (Record& record: records)
+    {
+        std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
+    }
+}
+
+void TSDBCLI::readfrom(int64_t timestamp)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    if (timestamp < 0)
+    {
+        std::cout << "Timestamp cannot be negative.\n";
+    }
+    std::optional<Record> record = (*storage).readFromTime(timestamp);
+    if (record.has_value())
+    {
+        std::cout << "Timestamp: " << record.value().timestamp << ", Value: " << record.value().value << "\n";
+    }
+    else
+    {
+        std::cout << "No record found\n";
+    }
+}
+
+void TSDBCLI::readrange(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+
+    if (start < 0)
+    {
+        std::cout << "Timestamps cannot be negative.\n";
+        return;
+    }
+    if (start > end)
+    {
+        std::cout << "Invalid range. Start timestamp cannot come after end timestamp.\n";
+    }
+    std::vector<Record> records = (*storage).readRange(start, end);
+    for (Record& record: records)
+    {
+        std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
+    }
 }

@@ -104,6 +104,43 @@ int main() {
             }
             cli.use(tokens[1]);
         }
+        else if (command == "readall")
+        {
+            cli.readall();
+        }
+        else if (command == "readfrom")
+        {
+            if (tokens.size() != 2)
+            {
+                std::cout << "Usage: readfrom <timestamp>\n";
+                continue;
+            }
+            try
+            {
+                int64_t timestamp = std::stoll(tokens[1]);
+                cli.readfrom(timestamp);
+            }catch (...)
+            {
+                std::cout << "Error: timestamp argument must be a positive integer\n";
+            }
+        }
+        else if (command == "readrange")
+        {
+            if (tokens.size() != 3)
+            {
+                std::cout << "Usage: readfrom <start> <end>\n";
+                continue;
+            }
+            try
+            {
+                int64_t start = std::stoll(tokens[1]);
+                int64_t end = std::stoll(tokens[1]);
+                cli.readrange(start, end);
+            }catch (...)
+            {
+                std::cout << "Error: timestamp argument must be a positive integer\n";
+            }
+        }
         else if (command == "exit" || command == "quit") {
             std::cout << "Goodbye!\n";
             break;
