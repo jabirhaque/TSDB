@@ -134,11 +134,28 @@ int main() {
             try
             {
                 int64_t start = std::stoll(tokens[1]);
-                int64_t end = std::stoll(tokens[1]);
+                int64_t end = std::stoll(tokens[2]);
                 cli.readrange(start, end);
             }catch (...)
             {
                 std::cout << "Error: timestamp argument must be a positive integer\n";
+            }
+        }
+        else if (command == "append")
+        {
+            if (tokens.size() != 3)
+            {
+                std::cout << "Usage: append <timestamp> <value>\n";
+                continue;
+            }
+            try
+            {
+                int64_t timestamp = std::stoll(tokens[1]);
+                double value = std::stod(tokens[2]);
+                cli.append(timestamp, value);
+            }catch (...)
+            {
+                std::cout << "Error: timestamp must be positive integer, value must be a valid decimal\n";
             }
         }
         else if (command == "exit" || command == "quit") {

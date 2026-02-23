@@ -12,6 +12,7 @@ public:
     void readall();
     void readfrom(int64_t timestamp);
     void readrange(int64_t start, int64_t end);
+    void append(int64_t timestamp, double value);
 
 private:
     std::unique_ptr<Storage> storage;

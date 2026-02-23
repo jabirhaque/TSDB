@@ -1104,3 +1104,16 @@ void TSDBCLI::readrange(int64_t start, int64_t end)
         std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
     }
 }
+
+void TSDBCLI::append(int64_t timestamp, double value)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    bool success = (*storage).append(Record{timestamp, value});
+
+    if (success) std::cout << "Record accepted, pending persistence\n";
+    else std::cout << "Failed to accept record.\n";
+}
