@@ -104,6 +104,23 @@ int main() {
             }
             cli.use(tokens[1]);
         }
+        else if (command == "append")
+        {
+            if (tokens.size() != 3)
+            {
+                std::cout << "Usage: append <timestamp> <value>\n";
+                continue;
+            }
+            try
+            {
+                int64_t timestamp = std::stoll(tokens[1]);
+                double value = std::stod(tokens[2]);
+                cli.append(timestamp, value);
+            }catch (...)
+            {
+                std::cout << "Error: timestamp must be positive integer, value must be a valid decimal\n";
+            }
+        }
         else if (command == "readall")
         {
             cli.readall();
@@ -141,21 +158,73 @@ int main() {
                 std::cout << "Error: timestamp argument must be a positive integer\n";
             }
         }
-        else if (command == "append")
+        else if (command == "count")
         {
-            if (tokens.size() != 3)
+            if (tokens.size() == 1)
             {
-                std::cout << "Usage: append <timestamp> <value>\n";
-                continue;
+                cli.count();
             }
-            try
+            else if (tokens.size() == 3)
             {
-                int64_t timestamp = std::stoll(tokens[1]);
-                double value = std::stod(tokens[2]);
-                cli.append(timestamp, value);
-            }catch (...)
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.count(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
             {
-                std::cout << "Error: timestamp must be positive integer, value must be a valid decimal\n";
+                std::cout << "Usage: count <start> <end>\n";
+            }
+        }
+        else if (command == "first")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.first();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.first(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: first <start> <end>\n";
+            }
+        }
+        else if (command == "last")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.last();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.last(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: last <start> <end>\n";
             }
         }
         else if (command == "exit" || command == "quit") {
