@@ -386,6 +386,40 @@ void TSDBCLI::percentile(int64_t start, int64_t end, float p)
     std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
 }
 
+void TSDBCLI::stddev(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    if (!validateRange(start, end)) return;
+
+    float var = variance(start, end);
+    std::cout << "Standard Deviation: " << std::sqrt(var) << "\n";
+}
+
+float TSDBCLI::variance(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return 0;
+    }
+    if (!validateRange(start, end)) return 0;
+
+    std::vector<Record> records = (*storage).readRange(start, end);
+    float avg = sum(start, end)/records.size();
+    float expsqr = 0;
+    for (Record& record: records)
+    {
+        expsqr += record.value * record.value;
+    }
+    expsqr /= records.size();
+    float variance = expsqr - avg*avg;
+    std::cout << "Variance: " << variance << "\n";
+}
+
 bool TSDBCLI::validateRange(int64_t start, int64_t end)
 {
     if (start < 0)

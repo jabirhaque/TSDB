@@ -366,6 +366,29 @@ int main() {
                 std::cout << "Usage: percentile <start> <end> <p>\n";
             }
         }
+        else if (command == "stddev")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.avg();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.median(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: median <start> <end>\n";
+            }
+        }
         else if (command == "exit" || command == "quit") {
             std::cout << "Goodbye!\n";
             break;
