@@ -371,7 +371,7 @@ void TSDBCLI::median(int64_t start, int64_t end)
     std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
 }
 
-void TSDBCLI::percentile(int64_t start, int64_t end, float p)
+void TSDBCLI::percentile(int64_t start, int64_t end, size_t p)
 {
     if (!storage)
     {
@@ -379,6 +379,11 @@ void TSDBCLI::percentile(int64_t start, int64_t end, float p)
         return;
     }
     if (!validateRange(start, end)) return;
+    if (p > 100)
+    {
+        std::cout << "Invalid percentile. p must be between 0 and 100.\n";
+        return;
+    }
 
     std::vector<Record> records = (*storage).readRange(start, end);
     size_t index = (records.size()-1) * p / 100;
@@ -418,6 +423,7 @@ float TSDBCLI::variance(int64_t start, int64_t end)
     expsqr /= records.size();
     float variance = expsqr - avg*avg;
     std::cout << "Variance: " << variance << "\n";
+    return variance;
 }
 
 bool TSDBCLI::validateRange(int64_t start, int64_t end)

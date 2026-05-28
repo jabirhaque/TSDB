@@ -323,7 +323,7 @@ int main() {
         {
             if (tokens.size() == 1)
             {
-                cli.avg();
+                cli.median();
             }
             else if (tokens.size() == 3)
             {
@@ -370,7 +370,7 @@ int main() {
         {
             if (tokens.size() == 1)
             {
-                cli.avg();
+                cli.stddev();
             }
             else if (tokens.size() == 3)
             {
@@ -378,7 +378,30 @@ int main() {
                 {
                     int64_t start = std::stoll(tokens[1]);
                     int64_t end = std::stoll(tokens[2]);
-                    cli.median(start, end);
+                    cli.stddev(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: median <start> <end>\n";
+            }
+        }
+        else if (command == "variance")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.variance();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.variance(start, end);
                 }catch (...)
                 {
                     std::cout << "Error: timestamp argument must be a positive integer\n";

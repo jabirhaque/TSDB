@@ -21,7 +21,7 @@ public:
     void max(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max());
     void avg(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max());
     void median(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max());
-    void percentile(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max(), float p = 0.95);
+    void percentile(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max(), size_t p = 95);
     void stddev(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max());
     float variance(int64_t start = 0, int64_t end = std::numeric_limits<int64_t>::max());
 
