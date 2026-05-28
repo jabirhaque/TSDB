@@ -281,23 +281,28 @@ void TSDBCLI::last(int64_t start, int64_t end)
     std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
 }
 
-float TSDBCLI::sum(int64_t start, int64_t end)
+float TSDBCLI::calculateSum(int64_t start, int64_t end)
 {
-    if (!storage)
-    {
-        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
-        return 0;
-    }
-    if (!validateRange(start, end)) return 0;
-
     std::vector<Record> records = (*storage).readRange(start, end);
     double sum = 0;
     for (Record& record: records)
     {
         sum += record.value;
     }
-    std::cout << "Sum: " << sum << "\n";
     return sum;
+}
+
+void TSDBCLI::sum(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    if (!validateRange(start, end)) return;
+
+    float sum = calculateSum(start, end);
+    std::cout << "Sum: " << sum << "\n";
 }
 
 void TSDBCLI::min(int64_t start, int64_t end)
@@ -352,7 +357,7 @@ void TSDBCLI::avg(int64_t start, int64_t end)
     if (!validateRange(start, end)) return;
 
     size_t size = (*storage).readRange(start, end).size();
-    float total = sum(start, end);
+    float total = calculateSum(start, end);
     std::cout << "Average: " << total/size << "\n";
 }
 
@@ -400,30 +405,34 @@ void TSDBCLI::stddev(int64_t start, int64_t end)
     }
     if (!validateRange(start, end)) return;
 
-    float var = variance(start, end);
+    float var = calculateVariance(start, end);
     std::cout << "Standard Deviation: " << std::sqrt(var) << "\n";
 }
 
-float TSDBCLI::variance(int64_t start, int64_t end)
+void TSDBCLI::variance(int64_t start, int64_t end)
 {
     if (!storage)
     {
         std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
-        return 0;
+        return;
     }
-    if (!validateRange(start, end)) return 0;
+    if (!validateRange(start, end)) return;
 
+    float variance = calculateVariance(start, end);
+    std::cout << "Variance: " << variance << "\n";
+}
+
+float TSDBCLI::calculateVariance(int64_t start, int64_t end)
+{
     std::vector<Record> records = (*storage).readRange(start, end);
-    float avg = sum(start, end)/records.size();
+    float avg = calculateSum(start, end)/records.size();
     float expsqr = 0;
     for (Record& record: records)
     {
         expsqr += record.value * record.value;
     }
     expsqr /= records.size();
-    float variance = expsqr - avg*avg;
-    std::cout << "Variance: " << variance << "\n";
-    return variance;
+    return expsqr - avg*avg;
 }
 
 bool TSDBCLI::validateRange(int64_t start, int64_t end)
