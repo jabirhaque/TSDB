@@ -227,6 +227,75 @@ int main() {
                 std::cout << "Usage: last <start> <end>\n";
             }
         }
+        else if (command == "sum")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.sum();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.sum(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: sum <start> <end>\n";
+            }
+        }
+        else if (command == "min")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.min();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.min(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: min <start> <end>\n";
+            }
+        }
+        else if (command == "max")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.max();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.max(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: max <start> <end>\n";
+            }
+        }
         else if (command == "exit" || command == "quit") {
             std::cout << "Goodbye!\n";
             break;

@@ -281,6 +281,66 @@ void TSDBCLI::last(int64_t start, int64_t end)
     std::cout << "Timestamp: " << record.timestamp << ", Value: " << record.value << "\n";
 }
 
+void TSDBCLI::sum(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    if (!validateRange(start, end)) return;
+
+    std::vector<Record> records = (*storage).readRange(start, end);
+    double sum = 0;
+    for (Record& record: records)
+    {
+        sum += record.value;
+    }
+    std::cout << "Sum: " << sum << "\n";
+}
+
+void TSDBCLI::min(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    if (!validateRange(start, end)) return;
+
+    std::vector<Record> records = (*storage).readRange(start, end);
+    size_t index = 0;
+    for (size_t i=1; i<records.size(); i++)
+    {
+        if (records[i].value < records[index].value)
+        {
+            index = i;
+        }
+    }
+    std::cout << "Min value: " << records[index].value << ", at timestamp: " << records[index].timestamp << "\n";
+}
+
+void TSDBCLI::max(int64_t start, int64_t end)
+{
+    if (!storage)
+    {
+        std::cout << "No database selected. Use the 'use <database>' command to select a database.\n";
+        return;
+    }
+    if (!validateRange(start, end)) return;
+
+    std::vector<Record> records = (*storage).readRange(start, end);
+    size_t index = 0;
+    for (size_t i=1; i<records.size(); i++)
+    {
+        if (records[i].value > records[index].value)
+        {
+            index = i;
+        }
+    }
+    std::cout << "Max value: " << records[index].value << ", at timestamp: " << records[index].timestamp << "\n";
+}
+
 bool TSDBCLI::validateRange(int64_t start, int64_t end)
 {
     if (start < 0)
