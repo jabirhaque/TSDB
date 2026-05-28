@@ -296,6 +296,76 @@ int main() {
                 std::cout << "Usage: max <start> <end>\n";
             }
         }
+        else if (command == "avg")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.avg();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.avg(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: avg <start> <end>\n";
+            }
+        }
+        else if (command == "median")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.avg();
+            }
+            else if (tokens.size() == 3)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    cli.median(start, end);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: median <start> <end>\n";
+            }
+        }
+        else if (command == "percentile")
+        {
+            if (tokens.size() == 1)
+            {
+                cli.percentile();
+            }
+            else if (tokens.size() == 4)
+            {
+                try
+                {
+                    int64_t start = std::stoll(tokens[1]);
+                    int64_t end = std::stoll(tokens[2]);
+                    float p = std::stof(tokens[3]);
+                    cli.percentile(start, end, p);
+                }catch (...)
+                {
+                    std::cout << "Error: timestamp argument must be a positive integer\n";
+                }
+            }
+            else
+            {
+                std::cout << "Usage: percentile <start> <end> <p>\n";
+            }
+        }
         else if (command == "exit" || command == "quit") {
             std::cout << "Goodbye!\n";
             break;
