@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
       - name: Install dependencies
         run: |
@@ -24,11 +26,6 @@ jobs:
           sudo cmake CMakeLists.txt
           sudo make
           sudo cp lib/*.a /usr/lib
-
-      - name: Debug external directory
-        run: |
-          ls -R external || true
-          ls -la external/replxx || true
 
       - name: Run tests
         run: |
