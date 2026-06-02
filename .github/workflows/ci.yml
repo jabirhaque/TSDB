@@ -25,6 +25,11 @@ jobs:
           sudo make
           sudo cp lib/*.a /usr/lib
 
+      - name: Debug external directory
+        run: |
+          ls -R external || true
+          ls -la external/replxx || true
+
       - name: Run tests
         run: |
           mkdir -p build && cd build
