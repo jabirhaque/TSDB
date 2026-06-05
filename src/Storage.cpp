@@ -5,12 +5,20 @@
 #include <cstdint>
 #include <optional>
 #include <zlib.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
 #include <filesystem>
+#include <fcntl.h>
+#ifdef _WIN32
+    #include <io.h>
+
+    #define open _open
+    #define close _close
+    #define write _write
+#else
+    #include <unistd.h>
+#endif
 
 
 Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename(filename), sparseIndexStep(sparseIndexStep)
@@ -404,14 +412,19 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
 
     size_t bytes = batch.size() * sizeof(Record);
 
-    ssize_t written = ::write(fd, batch.data(), bytes);
-    if (written != static_cast<ssize_t>(bytes)) {
+    if (::write(fd, batch.data(), bytes) != bytes) {
         throw std::runtime_error("Partial write");
     }
 
-    if (::fsync(fd) != 0) {
-        throw std::runtime_error("fsync failed");
-    }
+    #ifdef _WIN32
+        if (_commit(fd) != 0) {
+            throw std::runtime_error("_commit failed");
+        }
+    #else
+        if (::fsync(fd) != 0) {
+            throw std::runtime_error("fsync failed");
+        }
+    #endif
 
     for (const auto& r : batch) {
         lastTimestamp = r.timestamp;
