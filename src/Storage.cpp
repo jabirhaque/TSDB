@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
+#include <filesystem>
 
 
 Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename(filename), sparseIndexStep(sparseIndexStep)
@@ -333,19 +334,13 @@ size_t Storage::recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile)
 
     std::streamoff newFileSize = fileSize - remainder;
 
-    inFile.close();
-
-    int fd = ::open(filename.c_str(), O_WRONLY);
-    if (fd == -1) {
-        throw std::runtime_error("Failed to open file for truncation");
-    }
-
-    if (::ftruncate(fd, newFileSize) != 0) {
-        ::close(fd);
+    std::filesystem::resize_file(filename, newFileSize);
+    inFile.clear();
+    inFile.seekg(0, std::ios::end);
+    fileSize = inFile.tellg();
+    if (fileSize != newFileSize) {
         throw std::runtime_error("Failed to truncate TSDB file");
     }
-
-    ::close(fd);
 
     return count;
 }
