@@ -43,5 +43,7 @@ jobs:
           cmake --build .
       - name: performance
         run: |
+          pwd
+          ls
           ./TSDB
           performance
