@@ -41,3 +41,7 @@ jobs:
           mkdir -p build && cd build
           cmake ..
           cmake --build .
+      -name: performance
+      - run: |
+          ./TSDB
+          performance
