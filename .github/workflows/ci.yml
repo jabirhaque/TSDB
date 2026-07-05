@@ -44,6 +44,4 @@ jobs:
       - name: performance
         run: |
           cd build
-          ls
-          ./TSDB
-          performance
+          echo "performance" | ./TSDB
