@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 TSDBCLI::TSDBCLI() : storage(nullptr){}
 
@@ -30,7 +31,6 @@ void TSDBCLI::performance()
 
         std::vector<std::thread> producers;
         std::vector<long long> appendTimes;
-        std::vector<int64_t> timestamps;
         long long totalAppendTime = 0;
         std::mutex mtx;
 
@@ -38,7 +38,6 @@ void TSDBCLI::performance()
         {
             producers.emplace_back([&, p]() {
                 std::vector<long long> local_times;
-                std::vector<int64_t> local_timestamps;
                 local_times.reserve(recordsPerProducer);
                 long long local_total = 0;
 
@@ -49,19 +48,17 @@ void TSDBCLI::performance()
                     r.value = static_cast<double>(i);
 
                     auto start = std::chrono::high_resolution_clock::now();
-                    bool accepted = (*storage).append(r);
+                    (*storage).append(r);
                     auto end = std::chrono::high_resolution_clock::now();
 
                     long long duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
                     local_times.push_back(duration_ns);
-                    if (accepted) local_timestamps.push_back(r.timestamp);
                     local_total += duration_ns;
                 }
 
                 {
                     std::lock_guard<std::mutex> lock(mtx);
                     appendTimes.insert(appendTimes.end(), local_times.begin(), local_times.end());
-                    timestamps.insert(timestamps.end(), local_timestamps.begin(), local_timestamps.end());
                     totalAppendTime += local_total;
                 }
             });
@@ -83,16 +80,24 @@ void TSDBCLI::performance()
         std::cout << "p95 append time: " << p95 << " ns\n";
         std::cout << "p99 append time: " << p99 << " ns\n";
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        storage.reset();
+        std::filesystem::remove(db);
+
+        storage = std::make_unique<Storage>(db);
+
+        for (int i=0; i<1000000; i++) {
+            (*storage).append(Record{i, static_cast<double>(i)});
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
         std::vector<long long> readFromTimes;
         long long totalReadFromTime = 0;
 
-        for (int i=0; i<timestamps.size(); i+=100)
+        for (int i=0; i<10000; i++)
         {
-            int64_t ts = timestamps[i];
             auto start = std::chrono::high_resolution_clock::now();
-            (*storage).readFromTime(ts);
+            (*storage).readFromTime(std::rand()%1000000);
             auto end = std::chrono::high_resolution_clock::now();
 
             long long duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
@@ -100,16 +105,16 @@ void TSDBCLI::performance()
             totalReadFromTime += duration_ns;
         }
 
-        std::cout << "\nAverage read from time: " << static_cast<double>((totalReadFromTime / readFromTimes.size()))/1000 << " ms\n";
+        std::cout << "\nAverage read from time: " << static_cast<double>((totalReadFromTime / readFromTimes.size()))/1000 << "µs\n";
 
         std::sort(readFromTimes.begin(), readFromTimes.end());
         p99 = readFromTimes[readFromTimes.size() * 99 / 100];
         p95 = readFromTimes[readFromTimes.size() * 95 / 100];
         p50 = readFromTimes[readFromTimes.size() / 2];
 
-        std::cout << "p50 read from time: " << static_cast<double>(p50)/1000 << " ms\n";
-        std::cout << "p95 read from time: " << static_cast<double>(p95)/1000 << " ms\n";
-        std::cout << "p99 read from time: " << static_cast<double>(p99)/1000 << " ms\n";
+        std::cout << "p50 read from time: " << static_cast<double>(p50)/1000 << " µs\n";
+        std::cout << "p95 read from time: " << static_cast<double>(p95)/1000 << " µs\n";
+        std::cout << "p99 read from time: " << static_cast<double>(p99)/1000 << " µs\n";
 
         storage.reset();
         std::filesystem::remove(db);
