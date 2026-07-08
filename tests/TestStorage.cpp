@@ -940,7 +940,7 @@ TEST(StorageTest, MultiThreadingAppend) {
 
     Storage s(filename);
 
-    const int producerCount = 4;
+    const int producerCount = 32;
     const int recordsPerProducer = 100;
 
     std::vector<std::thread> producers;
