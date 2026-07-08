@@ -1006,13 +1006,13 @@ TEST(StorageTest, MultiThreadingAppendMonotonicEnforcement) {
         EXPECT_FALSE(s.append(r));
     }
 
-    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    //
-    // std::vector<Record> records = s.readAll();
-    //
-    // ASSERT_EQ(records.size(),
-    //           producerCount * recordsPerProducer);
-    //
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    std::vector<Record> records = s.readAll();
+
+    ASSERT_EQ(records.size(),
+              producerCount * recordsPerProducer);
+
     // for (int i=1; i<records.size(); i++) {
     //     EXPECT_LT(records[i-1].timestamp, records[i].timestamp);
     // }
