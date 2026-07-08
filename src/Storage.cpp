@@ -61,14 +61,13 @@ Storage::~Storage()
 
 bool Storage::append(Record r)
 {
+    std::lock_guard<std::mutex> lock(bufferMutex);
     if (r.timestamp <= lastTimestamp) return false;
 
     r.crc = computeCRC(r);
 
-    {
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        activeBuffer.push_back(r);
-    }
+    activeBuffer.push_back(r);
+    lastTimestamp =  r.timestamp;
     return true;
 }
 
@@ -402,10 +401,6 @@ void Storage::flushLoop()
 }
 
 void Storage::flushBufferToDisk(std::vector<Record>& batch) {
-    std::sort(batch.begin(), batch.end(),
-              [](const Record& a, const Record& b) {
-                  return a.timestamp < b.timestamp;
-              });
 
     size_t bytes = batch.size() * sizeof(Record);
 
@@ -419,7 +414,6 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
     }
 
     for (const auto& r : batch) {
-        lastTimestamp = r.timestamp;
 
         if (recordCount % sparseIndexStep == 0) {
             sparseIndex.push_back({r.timestamp, recordCount});
