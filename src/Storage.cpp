@@ -398,7 +398,6 @@ void Storage::flushLoop()
         std::vector<Record> batch;
 
         {
-            std::lock_guard<std::mutex> lock(bufferMutex);
             std::unique_lock lock(readWriteMutex);
             batch.swap(activeBuffer);
 
