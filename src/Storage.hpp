@@ -55,7 +55,7 @@ private:
     //synchronisation
     std::atomic<bool> running{true};
     mutable std::mutex bufferMutex;
-    std::shared_mutex readWriteMutex;
+    mutable std::shared_mutex readWriteMutex;
     std::thread flushThread;
     const std::chrono::milliseconds flushInterval{5};
 
