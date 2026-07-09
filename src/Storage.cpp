@@ -62,7 +62,7 @@ Storage::~Storage()
 
 bool Storage::append(Record r)
 {
-    std::lock_guard<std::mutex> lock(bufferMutex);
+    std::unique_lock lock(readWriteMutex);
     if (r.timestamp <= lastTimestamp) return false;
 
     r.crc = computeCRC(r);
@@ -266,7 +266,7 @@ Record Storage::getRecord(size_t index) const
 
 int64_t Storage::getLastTimestamp() const
 {
-    std::lock_guard<std::mutex> lock(bufferMutex);
+    std::shared_lock lock(readWriteMutex);
     return lastTimestamp;
 }
 
@@ -399,17 +399,17 @@ void Storage::flushLoop()
 
         {
             std::lock_guard<std::mutex> lock(bufferMutex);
+            std::unique_lock lock(readWriteMutex);
             batch.swap(activeBuffer);
+
+            if (batch.empty()) continue;
+
+            flushBufferToDisk(batch);
         }
-
-        if (batch.empty()) continue;
-
-        flushBufferToDisk(batch);
     }
 }
 
 void Storage::flushBufferToDisk(std::vector<Record>& batch) {
-    std::unique_lock lock(readWriteMutex);
 
     size_t bytes = batch.size() * sizeof(Record);
 
