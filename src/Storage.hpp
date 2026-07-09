@@ -6,6 +6,7 @@
 #include <vector>
 #include <optional>
 #include <thread>
+#include <shared_mutex>
 
 class Storage
 {
@@ -31,7 +32,7 @@ public:
     TSDBHeader getHeader() const;
     size_t getRecordCount() const;
     size_t getSparseIndexStep() const;
-    const std::vector<IndexEntry>& getSparseIndex() const;
+    std::vector<IndexEntry> getSparseIndex() const;
 
     static TSDBHeader validateAndReadHeader(std::ifstream& inFile, std::string filename);
 
@@ -53,7 +54,7 @@ private:
 
     //synchronisation
     std::atomic<bool> running{true};
-    mutable std::mutex bufferMutex;
+    mutable std::shared_mutex readWriteMutex;
     std::thread flushThread;
     const std::chrono::milliseconds flushInterval{5};
 

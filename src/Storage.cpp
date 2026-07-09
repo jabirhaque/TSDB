@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
+#include <mutex>
 
 
 Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename(filename), sparseIndexStep(sparseIndexStep)
@@ -61,18 +62,18 @@ Storage::~Storage()
 
 bool Storage::append(Record r)
 {
+    std::unique_lock lock(readWriteMutex);
     if (r.timestamp <= lastTimestamp) return false;
 
     r.crc = computeCRC(r);
 
-    {
-        std::lock_guard<std::mutex> lock(bufferMutex);
-        activeBuffer.push_back(r);
-    }
+    activeBuffer.push_back(r);
+    lastTimestamp =  r.timestamp;
     return true;
 }
 
 std::vector<Record> Storage::readAll() const {
+    std::shared_lock lock(readWriteMutex);
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile.is_open()) {
         throw std::runtime_error("Failed to open file for reading: " + filename);
@@ -113,6 +114,7 @@ std::vector<Record> Storage::readAll() const {
 
 std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
 {
+    std::shared_lock lock(readWriteMutex);
     if (startTs > endTs) throw std::runtime_error("Invalid time range");
 
     if (startTs > lastTimestamp) return {};
@@ -212,6 +214,7 @@ std::optional<Record> Storage::readFromTime(int64_t timestamp) const
 
 std::optional<Record> Storage::getLastRecord() const
 {
+    std::shared_lock lock(readWriteMutex);
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
@@ -238,6 +241,7 @@ std::optional<Record> Storage::getLastRecord() const
 
 Record Storage::getRecord(size_t index) const
 {
+    std::shared_lock lock(readWriteMutex);
     std::ifstream inFile(filename, std::ios::binary);
     if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
@@ -262,6 +266,7 @@ Record Storage::getRecord(size_t index) const
 
 int64_t Storage::getLastTimestamp() const
 {
+    std::shared_lock lock(readWriteMutex);
     return lastTimestamp;
 }
 
@@ -272,6 +277,7 @@ TSDBHeader Storage::getHeader() const
 
 size_t Storage::getRecordCount() const
 {
+    std::shared_lock lock(readWriteMutex);
     return recordCount;
 }
 
@@ -280,8 +286,9 @@ size_t Storage::getSparseIndexStep() const
     return sparseIndexStep;
 }
 
-const std::vector<IndexEntry>& Storage::getSparseIndex() const
+std::vector<IndexEntry> Storage::getSparseIndex() const
 {
+    std::shared_lock lock(readWriteMutex);
     return sparseIndex;
 }
 
@@ -391,21 +398,17 @@ void Storage::flushLoop()
         std::vector<Record> batch;
 
         {
-            std::lock_guard<std::mutex> lock(bufferMutex);
+            std::unique_lock lock(readWriteMutex);
             batch.swap(activeBuffer);
+
+            if (batch.empty()) continue;
+
+            flushBufferToDisk(batch);
         }
-
-        if (batch.empty()) continue;
-
-        flushBufferToDisk(batch);
     }
 }
 
 void Storage::flushBufferToDisk(std::vector<Record>& batch) {
-    std::sort(batch.begin(), batch.end(),
-              [](const Record& a, const Record& b) {
-                  return a.timestamp < b.timestamp;
-              });
 
     size_t bytes = batch.size() * sizeof(Record);
 
@@ -419,7 +422,6 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
     }
 
     for (const auto& r : batch) {
-        lastTimestamp = r.timestamp;
 
         if (recordCount % sparseIndexStep == 0) {
             sparseIndex.push_back({r.timestamp, recordCount});
