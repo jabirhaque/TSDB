@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
+#include <mutex>
 
 
 Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename(filename), sparseIndexStep(sparseIndexStep)
