@@ -26,47 +26,21 @@ void TSDBCLI::performance()
 
         std::cout << "Performance metric mode activated. Starting performance tests...\n";
 
-        const int producerCount = 4;
-        const int recordsPerProducer = 1'000'000 / producerCount;
-
-        std::vector<std::thread> producers;
         std::vector<long long> appendTimes;
         long long totalAppendTime = 0;
-        std::mutex mtx;
 
-        for (int p = 0; p < producerCount; ++p)
-        {
-            producers.emplace_back([&, p]() {
-                std::vector<long long> local_times;
-                local_times.reserve(recordsPerProducer);
-                long long local_total = 0;
+        for (int i = 0; i < 10000; ++i){
+            Record r;
+            r.timestamp = 1'000'000 + i;
+            r.value = static_cast<double>(i);
 
-                for (int i = 0; i < recordsPerProducer; ++i)
-                {
-                    Record r;
-                    r.timestamp = p * 1'000'000 + i;
-                    r.value = static_cast<double>(i);
+            auto start = std::chrono::high_resolution_clock::now();
+            (*storage).append(r);
+            auto end = std::chrono::high_resolution_clock::now();
 
-                    auto start = std::chrono::high_resolution_clock::now();
-                    (*storage).append(r);
-                    auto end = std::chrono::high_resolution_clock::now();
-
-                    long long duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-                    local_times.push_back(duration_ns);
-                    local_total += duration_ns;
-                }
-
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    appendTimes.insert(appendTimes.end(), local_times.begin(), local_times.end());
-                    totalAppendTime += local_total;
-                }
-            });
-        }
-
-        for (auto& t : producers)
-        {
-            t.join();
+            long long duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+            appendTimes.push_back(duration_ns);
+            totalAppendTime += duration_ns;
         }
 
         std::cout << "Average append time: " << (totalAppendTime / appendTimes.size()) << " ns\n";
