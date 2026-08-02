@@ -34,7 +34,7 @@ public:
     size_t getSparseIndexStep() const;
     std::vector<IndexEntry> getSparseIndex() const;
 
-    static TSDBHeader validateAndReadHeader(std::string filename);
+    static TSDBHeader validateAndReadHeader(const std::string& filename);
 
 private:
     //file info
@@ -61,7 +61,7 @@ private:
 
 
     //private methods
-    size_t recoverPartialWriteAndReturnRecordCount(std::string filename);
+    size_t recoverPartialWriteAndReturnRecordCount(const std::string& filename);
     uint32_t computeCRC(const Record& r) const;
     void buildSparseIndex();
     void flushLoop();
