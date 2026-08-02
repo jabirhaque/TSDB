@@ -190,7 +190,7 @@ TEST(StorageTest, InvalidMagicNumberThrows) {
     std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage::validateAndReadHeader(inFile, filename);
+        Storage::validateAndReadHeader(filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Invalid TSDB file magic number: testdb.tsdb");
@@ -210,7 +210,7 @@ TEST(StorageTest, IncompatibleVersionThrows) {
     std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage::validateAndReadHeader(inFile, filename);
+        Storage::validateAndReadHeader(filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Unsupported TSDB file version: testdb.tsdb");
@@ -230,7 +230,7 @@ TEST(StorageTest, InvalidRecordSizeThrows) {
     std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage::validateAndReadHeader(inFile, filename);
+        Storage::validateAndReadHeader(filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Record size mismatch: testdb.tsdb");

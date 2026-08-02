@@ -304,7 +304,7 @@ std::vector<IndexEntry> Storage::getSparseIndex() const
     return sparseIndex;
 }
 
-TSDBHeader Storage::validateAndReadHeader(std::string filename)
+TSDBHeader Storage::validateAndReadHeader(std::string& filename)
 {
     int fd = ::open(filename.c_str(), O_RDONLY);
     if (fd == -1) throw std::runtime_error("Failed to open file: " + filename);
@@ -344,7 +344,7 @@ TSDBHeader Storage::validateAndReadHeader(std::string filename)
     return temporaryHeader;
 }
 
-size_t Storage::recoverPartialWriteAndReturnRecordCount(std::string filename)
+size_t Storage::recoverPartialWriteAndReturnRecordCount(std::string& filename)
 {
     int fd = ::open(filename.c_str(), O_RDONLY);
     if (fd == -1) throw std::runtime_error("Failed to open file: " + filename);
