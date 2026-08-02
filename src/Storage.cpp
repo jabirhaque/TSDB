@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <iostream>
 #include <mutex>
+#include <errno.h>
+#include <sys/stat.h>
 
 
 Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename(filename), sparseIndexStep(sparseIndexStep)
@@ -19,28 +21,38 @@ Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename
 
     flushThread = std::thread(&Storage::flushLoop, this);
 
-    std::ifstream inFile(filename, std::ios::binary);
-    if (inFile.is_open()) {
-        header = validateAndReadHeader(inFile, filename);
-        recordCount = recoverPartialWriteAndReturnRecordCount(inFile);
+    fd = ::open(filename.c_str(), O_RDONLY);
+    if (fd == -1) {
+        if (errno != ENOENT){
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+        header = {'T', 'S', 'D', 'B', 1, {0, 0, 0}, static_cast<uint16_t>(sizeof(Record))};
+        fd = ::open(filename.c_str(),
+                O_WRONLY | O_APPEND | O_CREAT,
+                0644);
+        if (fd == -1){
+            throw std::runtime_error("Failed to create new file: " + filename);
+        }
+        ssize_t bytes = ::write(fd, &header, sizeof(TSDBHeader));
+        if (bytes != sizeof(TSDBHeader)){
+            ::close(fd);
+            throw std::runtime_error("Failed to write header to new file: " + filename);
+        }
+        recordCount = 0;
+        ::close(fd);
     }
     else
     {
-        header = {'T', 'S', 'D', 'B', 1, {0, 0, 0}, static_cast<uint16_t>(sizeof(Record))};
-        std::ofstream outFile(filename, std::ios::binary | std::ios::app);
-        if (!outFile.is_open()) {
-            throw std::runtime_error("Failed to open file for writing: " + filename);
-        }
-        outFile.write(reinterpret_cast<const char*>(&header), sizeof(TSDBHeader));
-        outFile.close();
-        recordCount = 0;
+        ::close(fd);
+        header = validateAndReadHeader(filename);
+        recordCount = recoverPartialWriteAndReturnRecordCount(filename);
     }
 
     fd = ::open(filename.c_str(),
                 O_WRONLY | O_APPEND | O_CREAT,
                 0644);
 
-    if (fd < 0) {
+    if (fd == -1) {
         throw std::runtime_error("Failed to open data file");
     }
 
@@ -292,57 +304,72 @@ std::vector<IndexEntry> Storage::getSparseIndex() const
     return sparseIndex;
 }
 
-TSDBHeader Storage::validateAndReadHeader(std::ifstream& inFile, std::string filename)
+TSDBHeader Storage::validateAndReadHeader(std::string filename)
 {
-    if (inFile.is_open()) {
-
-        inFile.seekg(0, std::ios::end);
-        std::streampos fileSize = inFile.tellg();
-
-        if (fileSize < static_cast<std::streampos>(sizeof(TSDBHeader))) {
-            throw std::runtime_error("File too small to contain valid TSDB header: " + filename);
-        }
-
-        TSDBHeader temporaryHeader;
-        inFile.seekg(0, std::ios::beg);
-
-        if (!inFile.read(reinterpret_cast<char*>(&temporaryHeader), sizeof(TSDBHeader))) {
-            throw std::runtime_error("Failed to read TSDB header: " + filename);
-        }
-
-        if (temporaryHeader.magic[0] != 'T' || temporaryHeader.magic[1] != 'S' ||
-            temporaryHeader.magic[2] != 'D' || temporaryHeader.magic[3] != 'B') {
-            throw std::runtime_error("Invalid TSDB file magic number: " + filename);
-            }
-
-        if (temporaryHeader.version != 1) {
-            throw std::runtime_error("Unsupported TSDB file version: " + filename);
-        }
-
-        if (temporaryHeader.recordSize != sizeof(Record)) {
-            throw std::runtime_error("Record size mismatch: " + filename);
-        }
-
-        return temporaryHeader;
+    int fd = ::open(filename.c_str(), O_RDONLY);
+    if (fd == -1) throw std::runtime_error("Failed to open file: " + filename);
+    
+    struct stat st;
+    if (::fstat(fd, &st) != 0){
+        ::close(fd);
+        throw std::runtime_error("Failed to read file stats: " + filename); 
     }
-    throw std::runtime_error("File doesn't exist: " + filename);
+
+    off_t fileSize = st.st_size;
+    if (fileSize < sizeof(TSDBHeader)){
+        ::close(fd);
+        throw std::runtime_error("File too small to contain valid TSDB header: " + filename);
+    }
+    
+    TSDBHeader temporaryHeader;
+    ssize_t bytes = ::read(fd, &temporaryHeader, sizeof(TSDBHeader));
+    ::close(fd);
+    if (bytes != sizeof(TSDBHeader)){
+        throw std::runtime_error("Failed to read TSDB header: " + filename); 
+    }
+
+    if (temporaryHeader.magic[0] != 'T' || temporaryHeader.magic[1] != 'S' ||
+        temporaryHeader.magic[2] != 'D' || temporaryHeader.magic[3] != 'B') {
+            throw std::runtime_error("Invalid TSDB file magic number: " + filename);
+        }
+
+    if (temporaryHeader.version != 1){
+        throw std::runtime_error("Unsupported TSDB file version: " + filename);
+    }
+
+    if (temporaryHeader.recordSize != sizeof(Record)){
+        throw std::runtime_error("Record size mismatch: " + filename);
+    }
+
+    return temporaryHeader;
 }
 
-size_t Storage::recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile)
+size_t Storage::recoverPartialWriteAndReturnRecordCount(std::string filename)
 {
-    inFile.seekg(0, std::ios::end);
-    std::streampos fileSize = inFile.tellg();
-    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-    size_t count = dataSize/static_cast<std::streampos>(sizeof(Record));
-    std::streampos remainder = dataSize % static_cast<std::streampos>(sizeof(Record));
+    int fd = ::open(filename.c_str(), O_RDONLY);
+    if (fd == -1) throw std::runtime_error("Failed to open file: " + filename);
+    
+    struct stat st;
+    if (::fstat(fd, &st) != 0){
+        ::close(fd);
+        throw std::runtime_error("Failed to read file stats: " + filename); 
+    }
 
-    if (remainder == 0) return count;
+    off_t fileSize = st.st_size;
+    off_t dataSize = fileSize - sizeof(TSDBHeader);
+    size_t count = dataSize/sizeof(Record);
+    size_t remainder = dataSize % sizeof(Record);
+
+    if (remainder == 0) {
+        ::close(fd);
+        return count;
+    }
 
     std::streamoff newFileSize = fileSize - remainder;
 
-    inFile.close();
+    ::close(fd);
 
-    int fd = ::open(filename.c_str(), O_WRONLY);
+    fd = ::open(filename.c_str(), O_WRONLY);
     if (fd == -1) {
         throw std::runtime_error("Failed to open file for truncation");
     }
@@ -351,6 +378,8 @@ size_t Storage::recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile)
         ::close(fd);
         throw std::runtime_error("Failed to truncate TSDB file");
     }
+
+    ::fsync(fd);
 
     ::close(fd);
 
