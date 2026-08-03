@@ -67,4 +67,6 @@ private:
     void buildSparseIndex();
     void flushLoop();
     void flushBufferToDisk( std::vector<Record>& buffer);
+    void validateRecordCount() const;
+    void validateCRC(const Record& record) const;
 };

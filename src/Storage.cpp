@@ -88,6 +88,8 @@ bool Storage::append(Record r)
 std::vector<Record> Storage::readAll() const {
     std::shared_lock lock(diskMutex);
 
+    validateRecordCount();
+
     struct stat st;
     if (::fstat(read_fd, &st) != 0){
         throw std::runtime_error("Failed to read file stats: " + filename); 
@@ -98,13 +100,6 @@ std::vector<Record> Storage::readAll() const {
 
 
     if (dataSize == 0) return {};
-
-    if (dataSize % sizeof(Record) != 0) {
-        throw std::runtime_error("Corrupted TSDB file: misaligned record section");
-    }
-    if (dataSize != recordCount * sizeof(Record)) {
-        throw std::runtime_error("Corrupted TSDB file: record count not matching");
-    }
     
     std::vector<Record> records(recordCount);
 
@@ -114,11 +109,7 @@ std::vector<Record> Storage::readAll() const {
 
     for (const Record& r: records)
     {
-        uint32_t expected = computeCRC(r);
-
-        if (expected != r.crc) {
-            throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(r.timestamp));
-        }
+        validateCRC(r);
     }
     return records;
 }
@@ -133,6 +124,8 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     if (sparseIndex.empty()) return {};
 
     if (endTs < sparseIndex[0].timestamp) return {};
+
+    validateRecordCount();
 
     startTs = std::max(sparseIndex[0].timestamp, startTs);
     endTs = std::min(lastTimestamp, endTs);
@@ -191,10 +184,7 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
         Record record;
         if (::pread(read_fd, &record, sizeof(Record), sizeof(TSDBHeader)+i*sizeof(Record)) != sizeof(Record));
         if (record.timestamp > endTs) break;
-        uint32_t expected = computeCRC(record);
-        if (expected != static_cast<uint32_t>(record.crc)) {
-            throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
-        }
+        validateCRC(record);
         records.push_back(record);
     }
     return records;
@@ -210,6 +200,8 @@ std::optional<Record> Storage::readFromTime(int64_t timestamp) const
 std::optional<Record> Storage::getLastRecord() const
 {
     std::shared_lock lock(diskMutex);
+
+    validateRecordCount();
     
     struct stat st;
     if (::fstat(read_fd, &st) != 0){
@@ -231,11 +223,7 @@ std::optional<Record> Storage::getLastRecord() const
         throw std::runtime_error("Failed to read last record: " + filename); 
     }
 
-    uint32_t expected = computeCRC(last);
-
-    if (expected != last.crc){
-        throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(last.timestamp));
-    }
+    validateCRC(last);
 
     return last;
 }
@@ -244,6 +232,8 @@ Record Storage::getRecord(size_t index) const
 {
     std::shared_lock lock(diskMutex);
 
+    validateRecordCount();
+
     if (index >= recordCount) throw std::out_of_range("Record index out of range");
 
     Record record;
@@ -251,11 +241,7 @@ Record Storage::getRecord(size_t index) const
         throw std::runtime_error("Failed to read record: " + filename);
     }
 
-    uint32_t expected = computeCRC(record);
-
-    if (expected != record.crc) {
-        throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
-    }
+    validateCRC(record);
 
     return record;
 }
@@ -365,11 +351,11 @@ size_t Storage::recoverPartialWriteAndReturnRecordCount(const std::string& filen
     return count;
 }
 
-uint32_t Storage::computeCRC(const Record& r) const
+uint32_t Storage::computeCRC(const Record& record) const
 {
     uint32_t crc = crc32(0L, Z_NULL, 0);
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.timestamp), sizeof(r.timestamp));
-    crc = crc32(crc, reinterpret_cast<const Bytef*>(&r.value), sizeof(r.value));
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&record.timestamp), sizeof(record.timestamp));
+    crc = crc32(crc, reinterpret_cast<const Bytef*>(&record.value), sizeof(record.value));
     return crc;
 }
 
@@ -413,6 +399,8 @@ void Storage::flushLoop()
 void Storage::flushBufferToDisk(std::vector<Record>& batch) {
     std::unique_lock lock(diskMutex);
 
+    validateRecordCount();
+
     size_t bytes = batch.size() * sizeof(Record);
 
     ssize_t written = ::write(append_fd, batch.data(), bytes);
@@ -430,5 +418,27 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
             sparseIndex.push_back({r.timestamp, recordCount});
         }
         ++recordCount;
+    }
+}
+
+void Storage::validateRecordCount() const{
+    struct stat st;
+    if (::fstat(read_fd, &st) != 0){
+        throw std::runtime_error("Failed to read file stats: " + filename); 
+    }
+
+    off_t fileSize = st.st_size;
+    off_t dataSize = fileSize - sizeof(TSDBHeader);
+
+    if (dataSize != recordCount * sizeof(Record)) {
+        throw std::runtime_error("Corrupted TSDB file: record count not matching");
+    }
+}
+
+void Storage::validateCRC(const Record& record) const{
+    uint32_t expected = computeCRC(record);
+
+    if (expected != record.crc) {
+        throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
     }
 }
