@@ -34,12 +34,11 @@ Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename
             throw std::runtime_error("Failed to create new file: " + filename);
         }
         ssize_t bytes = ::write(fd, &header, sizeof(TSDBHeader));
+        ::close(fd);
         if (bytes != sizeof(TSDBHeader)){
-            ::close(fd);
             throw std::runtime_error("Failed to write header to new file: " + filename);
         }
         recordCount = 0;
-        ::close(fd);
     }
     else
     {
@@ -69,7 +68,7 @@ Storage::~Storage()
 {
     running = false;
     if (flushThread.joinable()) flushThread.join();
-    ::close(fd);
+    ::close(fd); //TODO: I dont think I need ::close(fd) everywhere in the constructor due to this destructor, check though
 }
 
 bool Storage::append(Record r)
@@ -227,24 +226,38 @@ std::optional<Record> Storage::readFromTime(int64_t timestamp) const
 std::optional<Record> Storage::getLastRecord() const
 {
     std::shared_lock lock(diskMutex);
-    std::ifstream inFile(filename, std::ios::binary);
-    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
-    inFile.seekg(0, std::ios::end);
-    std::streampos fileSize = inFile.tellg();
+    int fd = ::open(filename.c_str(), O_RDONLY);
+    if (fd == -1){
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+    
+    struct stat st;
+    if (::fstat(fd, &st) != 0){
+        ::close(fd);
+        throw std::runtime_error("Failed to read file stats: " + filename); 
+    }
 
-    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
-    if (dataSize == 0) return std::nullopt;
-    inFile.seekg(-static_cast<std::streamoff>(sizeof(Record)), std::ios::end);
+    off_t fileSize = st.st_size;
+    off_t dataSize = fileSize - sizeof(TSDBHeader);
+    
+    if (dataSize == 0) {
+        ::close(fd);
+        return std::nullopt;
+    }
 
     Record last;
-    if (!inFile.read(reinterpret_cast<char*>(&last), sizeof(Record))) {
-        throw std::runtime_error("Failed to read last record: " + filename);
+
+    ssize_t bytes = ::pread(fd, &last, sizeof(Record), fileSize-sizeof(Record));
+    ::close(fd);
+
+    if (bytes != sizeof(Record)){
+        throw std::runtime_error("Failed to read last record: " + filename); 
     }
 
     uint32_t expected = computeCRC(last);
 
-    if (expected != static_cast<uint32_t>(last.crc)) {
+    if (expected != last.crc){
         throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(last.timestamp));
     }
 
@@ -307,7 +320,9 @@ std::vector<IndexEntry> Storage::getSparseIndex() const
 TSDBHeader Storage::validateAndReadHeader(const std::string& filename)
 {
     int fd = ::open(filename.c_str(), O_RDONLY);
-    if (fd == -1) throw std::runtime_error("Failed to open file: " + filename);
+    if (fd == -1){
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
     
     struct stat st;
     if (::fstat(fd, &st) != 0){
@@ -347,7 +362,9 @@ TSDBHeader Storage::validateAndReadHeader(const std::string& filename)
 size_t Storage::recoverPartialWriteAndReturnRecordCount(const std::string& filename)
 {
     int fd = ::open(filename.c_str(), O_RDONLY);
-    if (fd == -1) throw std::runtime_error("Failed to open file: " + filename);
+    if (fd == -1){
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
     
     struct stat st;
     if (::fstat(fd, &st) != 0){
@@ -355,19 +372,19 @@ size_t Storage::recoverPartialWriteAndReturnRecordCount(const std::string& filen
         throw std::runtime_error("Failed to read file stats: " + filename); 
     }
 
+    ::close(fd);
+
     off_t fileSize = st.st_size;
     off_t dataSize = fileSize - sizeof(TSDBHeader);
     size_t count = dataSize/sizeof(Record);
     size_t remainder = dataSize % sizeof(Record);
 
     if (remainder == 0) {
-        ::close(fd);
         return count;
     }
 
     std::streamoff newFileSize = fileSize - remainder;
 
-    ::close(fd);
 
     fd = ::open(filename.c_str(), O_WRONLY);
     if (fd == -1) {
