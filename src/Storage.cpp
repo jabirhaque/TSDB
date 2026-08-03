@@ -399,18 +399,12 @@ uint32_t Storage::computeCRC(const Record& r) const
 
 void Storage::buildSparseIndex()
 {
-    std::ifstream inFile(filename, std::ios::binary);
-    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
-
-    inFile.seekg(0, std::ios::end);
-
     size_t index = 0;
 
     while (index<recordCount)
     {
-        inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
         int64_t ts;
-        if (!inFile.read(reinterpret_cast<char*>(&ts), sizeof(ts))) {
+        if (::pread(read_fd, &ts, sizeof(int64_t), sizeof(TSDBHeader)+index*sizeof(Record)) != sizeof(int64_t)){
             throw std::runtime_error("Failed to read timestamp from record: " + filename);
         }
         IndexEntry indexEntry;
