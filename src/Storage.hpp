@@ -34,15 +34,16 @@ public:
     size_t getSparseIndexStep() const;
     std::vector<IndexEntry> getSparseIndex() const;
 
-    static TSDBHeader validateAndReadHeader(std::ifstream& inFile, std::string filename);
+    static TSDBHeader validateAndReadHeader(const std::string& filename);
 
 private:
     //file info
-    const std::string filename;
+    const std::string filename; //TODO: protect against open file?
     TSDBHeader header;
     int64_t lastTimestamp;
     size_t recordCount;
-    int fd;
+    int append_fd;
+    int read_fd;
 
     //sparse index
     const size_t sparseIndexStep;
@@ -61,9 +62,11 @@ private:
 
 
     //private methods
-    size_t recoverPartialWriteAndReturnRecordCount(std::ifstream& inFile);
+    size_t recoverPartialWriteAndReturnRecordCount(const std::string& filename);
     uint32_t computeCRC(const Record& r) const;
     void buildSparseIndex();
     void flushLoop();
     void flushBufferToDisk( std::vector<Record>& buffer);
+    void validateRecordCount() const;
+    void validateCRC(const Record& record) const;
 };

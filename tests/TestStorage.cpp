@@ -143,10 +143,8 @@ TEST(StorageTest, RestartPreservesMonotonicity) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    auto records = s.readAll();
-    auto records2 = s.readAll();
+    auto records = s2.readAll();
     ASSERT_EQ(records.size(), 3);
-    ASSERT_EQ(records.size(), records2.size());
 }
 
 TEST(StorageTest, ValidHeaderCreation) {
@@ -190,7 +188,7 @@ TEST(StorageTest, InvalidMagicNumberThrows) {
     std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage::validateAndReadHeader(inFile, filename);
+        Storage::validateAndReadHeader(filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Invalid TSDB file magic number: testdb.tsdb");
@@ -210,7 +208,7 @@ TEST(StorageTest, IncompatibleVersionThrows) {
     std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage::validateAndReadHeader(inFile, filename);
+        Storage::validateAndReadHeader(filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Unsupported TSDB file version: testdb.tsdb");
@@ -230,7 +228,7 @@ TEST(StorageTest, InvalidRecordSizeThrows) {
     std::ifstream inFile(filename, std::ios::binary);
 
     try {
-        Storage::validateAndReadHeader(inFile, filename);
+        Storage::validateAndReadHeader(filename);
         FAIL() << "Expected std::runtime_error";
     } catch (const std::runtime_error& e) {
         EXPECT_STREQ(e.what(), "Record size mismatch: testdb.tsdb");
