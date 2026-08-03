@@ -75,10 +75,10 @@ Storage::~Storage()
 
 bool Storage::append(Record r)
 {
+    r.crc = computeCRC(r);
+
     std::unique_lock lock(bufferMutex);
     if (r.timestamp <= lastTimestamp) return false;
-
-    r.crc = computeCRC(r);
 
     activeBuffer.push_back(r);
     lastTimestamp =  r.timestamp;
@@ -243,22 +243,17 @@ std::optional<Record> Storage::getLastRecord() const
 Record Storage::getRecord(size_t index) const
 {
     std::shared_lock lock(diskMutex);
-    std::ifstream inFile(filename, std::ios::binary);
-    if (!inFile.is_open()) throw std::runtime_error("Failed to open file: " + filename);
 
-    inFile.seekg(0, std::ios::end);
-
-    if (index >= static_cast<int>(recordCount)) throw std::out_of_range("Record index out of range");
-    inFile.seekg(static_cast<std::streamoff>(sizeof(TSDBHeader)) + static_cast<std::streamoff>(index*sizeof(Record)), std::ios::beg);
+    if (index >= recordCount) throw std::out_of_range("Record index out of range");
 
     Record record;
-    if (!inFile.read(reinterpret_cast<char*>(&record), sizeof(Record))) {
+    if (::pread(read_fd, &record, sizeof(Record), sizeof(TSDBHeader)+index*sizeof(Record)) != sizeof(Record)){
         throw std::runtime_error("Failed to read record: " + filename);
     }
 
     uint32_t expected = computeCRC(record);
 
-    if (expected != static_cast<uint32_t>(record.crc)) {
+    if (expected != record.crc) {
         throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(record.timestamp));
     }
 
@@ -267,7 +262,6 @@ Record Storage::getRecord(size_t index) const
 
 int64_t Storage::getLastTimestamp() const
 {
-    std::shared_lock lock(diskMutex);
     return lastTimestamp;
 }
 
