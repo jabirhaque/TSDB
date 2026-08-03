@@ -144,7 +144,7 @@ TEST(StorageTest, RestartPreservesMonotonicity) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     auto records = s.readAll();
-    auto records2 = s.readAll();
+    auto records2 = s2.readAll();
     ASSERT_EQ(records.size(), 3);
     ASSERT_EQ(records.size(), records2.size());
 }

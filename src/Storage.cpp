@@ -87,28 +87,25 @@ bool Storage::append(Record r)
 
 std::vector<Record> Storage::readAll() const {
     std::shared_lock lock(diskMutex);
-    std::ifstream inFile(filename, std::ios::binary);
-    if (!inFile.is_open()) {
-        throw std::runtime_error("Failed to open file for reading: " + filename);
+
+    struct stat st;
+    if (::fstat(read_fd, &st) != 0){
+        throw std::runtime_error("Failed to read file stats: " + filename); 
     }
 
-    inFile.seekg(0, std::ios::end);
-    std::streampos fileSize = inFile.tellg();
-    inFile.seekg(static_cast<std::streampos>(sizeof(TSDBHeader)), std::ios::beg);
+    off_t fileSize = st.st_size;
+    off_t dataSize = fileSize - sizeof(TSDBHeader);
 
-    std::streampos dataSize = fileSize - static_cast<std::streampos>(sizeof(TSDBHeader));
 
-    std::vector<Record> records;
-    if (dataSize == 0) return records;
+    if (dataSize == 0) return std::vector<Record>(0);
 
     if (dataSize % sizeof(Record) != 0) {
         throw std::runtime_error("Corrupted TSDB file: misaligned record section");
     }
+    
+    std::vector<Record> records(dataSize/sizeof(Record));
 
-    size_t numRecords = dataSize / sizeof(Record);
-    records.resize(numRecords);
-
-    if (!inFile.read(reinterpret_cast<char*>(records.data()), dataSize)) {;
+    if (::pread(read_fd, records.data(), dataSize, sizeof(TSDBHeader)) != dataSize){
         throw std::runtime_error("Failed to read records from file: " + filename);
     }
 
@@ -116,12 +113,10 @@ std::vector<Record> Storage::readAll() const {
     {
         uint32_t expected = computeCRC(r);
 
-        if (expected != static_cast<uint32_t>(r.crc)) {
+        if (expected != r.crc) {
             throw std::runtime_error("Data corruption detected in record with timestamp: " + std::to_string(r.timestamp));
         }
     }
-
-    inFile.close();
     return records;
 }
 

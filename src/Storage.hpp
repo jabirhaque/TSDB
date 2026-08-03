@@ -41,7 +41,7 @@ private:
     const std::string filename;
     TSDBHeader header;
     int64_t lastTimestamp;
-    size_t recordCount;
+    size_t recordCount; //redundant
     int append_fd;
     int read_fd;
 
