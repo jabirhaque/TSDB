@@ -38,10 +38,10 @@ public:
 
 private:
     //file info
-    const std::string filename;
+    const std::string filename; //TODO: protect against open file?
     TSDBHeader header;
     int64_t lastTimestamp;
-    size_t recordCount; //redundant
+    size_t recordCount;
     int append_fd;
     int read_fd;
 
