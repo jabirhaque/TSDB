@@ -21,37 +21,38 @@ Storage::Storage(const std::string& filename, size_t sparseIndexStep) : filename
 
     flushThread = std::thread(&Storage::flushLoop, this);
 
-    fd = ::open(filename.c_str(), O_RDONLY);
-    if (fd == -1) {
+    read_fd = ::open(filename.c_str(), O_RDONLY);
+    if (read_fd == -1) {
         if (errno != ENOENT){
             throw std::runtime_error("Failed to open file: " + filename);
         }
         header = {'T', 'S', 'D', 'B', 1, {0, 0, 0}, static_cast<uint16_t>(sizeof(Record))};
-        fd = ::open(filename.c_str(),
+        int temp_fd = ::open(filename.c_str(),
                 O_WRONLY | O_APPEND | O_CREAT,
                 0644);
-        if (fd == -1){
+        if (temp_fd == -1){
             throw std::runtime_error("Failed to create new file: " + filename);
         }
-        ssize_t bytes = ::write(fd, &header, sizeof(TSDBHeader));
-        ::close(fd);
+        ssize_t bytes = ::write(temp_fd, &header, sizeof(TSDBHeader));
+        ::close(temp_fd);
         if (bytes != sizeof(TSDBHeader)){
             throw std::runtime_error("Failed to write header to new file: " + filename);
+        }
+        read_fd = ::open(filename.c_str(), O_RDONLY);
+        if (read_fd == -1){
+            throw std::runtime_error("Failed to open file: " + filename);
         }
         recordCount = 0;
     }
     else
     {
-        ::close(fd);
         header = validateAndReadHeader(filename);
         recordCount = recoverPartialWriteAndReturnRecordCount(filename);
     }
 
-    fd = ::open(filename.c_str(),
-                O_WRONLY | O_APPEND | O_CREAT,
-                0644);
+    append_fd = ::open(filename.c_str(), O_WRONLY | O_APPEND);
 
-    if (fd == -1) {
+    if (append_fd == -1) {
         throw std::runtime_error("Failed to open data file");
     }
 
@@ -68,7 +69,8 @@ Storage::~Storage()
 {
     running = false;
     if (flushThread.joinable()) flushThread.join();
-    ::close(fd); //TODO: I dont think I need ::close(fd) everywhere in the constructor due to this destructor, check though
+    ::close(append_fd);
+    ::close(read_fd);
 }
 
 bool Storage::append(Record r)
@@ -226,15 +228,9 @@ std::optional<Record> Storage::readFromTime(int64_t timestamp) const
 std::optional<Record> Storage::getLastRecord() const
 {
     std::shared_lock lock(diskMutex);
-
-    int fd = ::open(filename.c_str(), O_RDONLY);
-    if (fd == -1){
-        throw std::runtime_error("Failed to open file: " + filename);
-    }
     
     struct stat st;
-    if (::fstat(fd, &st) != 0){
-        ::close(fd);
+    if (::fstat(read_fd, &st) != 0){
         throw std::runtime_error("Failed to read file stats: " + filename); 
     }
 
@@ -242,14 +238,12 @@ std::optional<Record> Storage::getLastRecord() const
     off_t dataSize = fileSize - sizeof(TSDBHeader);
     
     if (dataSize == 0) {
-        ::close(fd);
         return std::nullopt;
     }
 
     Record last;
 
-    ssize_t bytes = ::pread(fd, &last, sizeof(Record), fileSize-sizeof(Record));
-    ::close(fd);
+    ssize_t bytes = ::pread(read_fd, &last, sizeof(Record), fileSize-sizeof(Record));
 
     if (bytes != sizeof(Record)){
         throw std::runtime_error("Failed to read last record: " + filename); 
@@ -319,26 +313,26 @@ std::vector<IndexEntry> Storage::getSparseIndex() const
 
 TSDBHeader Storage::validateAndReadHeader(const std::string& filename)
 {
-    int fd = ::open(filename.c_str(), O_RDONLY);
-    if (fd == -1){
+    int temp_fd = ::open(filename.c_str(), O_RDONLY);
+    if (temp_fd == -1){
         throw std::runtime_error("Failed to open file: " + filename);
     }
     
     struct stat st;
-    if (::fstat(fd, &st) != 0){
-        ::close(fd);
+    if (::fstat(temp_fd, &st) != 0){
+        ::close(temp_fd);
         throw std::runtime_error("Failed to read file stats: " + filename); 
     }
 
     off_t fileSize = st.st_size;
     if (fileSize < sizeof(TSDBHeader)){
-        ::close(fd);
+        ::close(temp_fd);
         throw std::runtime_error("File too small to contain valid TSDB header: " + filename);
     }
     
     TSDBHeader temporaryHeader;
-    ssize_t bytes = ::read(fd, &temporaryHeader, sizeof(TSDBHeader));
-    ::close(fd);
+    ssize_t bytes = ::read(temp_fd, &temporaryHeader, sizeof(TSDBHeader));
+    ::close(temp_fd);
     if (bytes != sizeof(TSDBHeader)){
         throw std::runtime_error("Failed to read TSDB header: " + filename); 
     }
@@ -360,19 +354,11 @@ TSDBHeader Storage::validateAndReadHeader(const std::string& filename)
 }
 
 size_t Storage::recoverPartialWriteAndReturnRecordCount(const std::string& filename)
-{
-    int fd = ::open(filename.c_str(), O_RDONLY);
-    if (fd == -1){
-        throw std::runtime_error("Failed to open file: " + filename);
-    }
-    
+{   
     struct stat st;
-    if (::fstat(fd, &st) != 0){
-        ::close(fd);
+    if (::fstat(read_fd, &st) != 0){
         throw std::runtime_error("Failed to read file stats: " + filename); 
     }
-
-    ::close(fd);
 
     off_t fileSize = st.st_size;
     off_t dataSize = fileSize - sizeof(TSDBHeader);
@@ -386,19 +372,19 @@ size_t Storage::recoverPartialWriteAndReturnRecordCount(const std::string& filen
     std::streamoff newFileSize = fileSize - remainder;
 
 
-    fd = ::open(filename.c_str(), O_WRONLY);
-    if (fd == -1) {
+    int temp_fd = ::open(filename.c_str(), O_WRONLY);
+    if (temp_fd == -1) {
         throw std::runtime_error("Failed to open file for truncation");
     }
 
-    if (::ftruncate(fd, newFileSize) != 0) {
-        ::close(fd);
+    if (::ftruncate(temp_fd, newFileSize) != 0) {
+        ::close(temp_fd);
         throw std::runtime_error("Failed to truncate TSDB file");
     }
 
-    ::fsync(fd);
+    ::fsync(temp_fd);
 
-    ::close(fd);
+    ::close(temp_fd);
 
     return count;
 }
@@ -459,12 +445,12 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
 
     size_t bytes = batch.size() * sizeof(Record);
 
-    ssize_t written = ::write(fd, batch.data(), bytes);
+    ssize_t written = ::write(append_fd, batch.data(), bytes);
     if (written != static_cast<ssize_t>(bytes)) {
         throw std::runtime_error("Partial write");
     }
 
-    if (::fsync(fd) != 0) {
+    if (::fsync(append_fd) != 0) {
         throw std::runtime_error("fsync failed");
     }
 

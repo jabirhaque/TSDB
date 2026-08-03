@@ -42,7 +42,8 @@ private:
     TSDBHeader header;
     int64_t lastTimestamp;
     size_t recordCount;
-    int fd;
+    int append_fd;
+    int read_fd;
 
     //sparse index
     const size_t sparseIndexStep;
