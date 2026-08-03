@@ -102,8 +102,11 @@ std::vector<Record> Storage::readAll() const {
     if (dataSize % sizeof(Record) != 0) {
         throw std::runtime_error("Corrupted TSDB file: misaligned record section");
     }
+    if (dataSize != recordCount * sizeof(Record)) {
+        throw std::runtime_error("Corrupted TSDB file: record count not matching");
+    }
     
-    std::vector<Record> records(dataSize/sizeof(Record));
+    std::vector<Record> records(recordCount);
 
     if (::pread(read_fd, records.data(), dataSize, sizeof(TSDBHeader)) != dataSize){
         throw std::runtime_error("Failed to read records from file: " + filename);
