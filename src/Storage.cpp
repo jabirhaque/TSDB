@@ -182,7 +182,9 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     for (size_t i=lastDiskIndex.value(); i<recordCount; i++)
     {
         Record record;
-        if (::pread(read_fd, &record, sizeof(Record), sizeof(TSDBHeader)+i*sizeof(Record)) != sizeof(Record));
+        if (::pread(read_fd, &record, sizeof(Record), sizeof(TSDBHeader)+i*sizeof(Record)) != sizeof(Record)){
+            throw std::runtime_error("Failed to read records from file: " + filename);
+        }
         if (record.timestamp > endTs) break;
         validateCRC(record);
         records.push_back(record);
@@ -403,12 +405,11 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
 
     size_t bytes = batch.size() * sizeof(Record);
 
-    ssize_t written = ::write(append_fd, batch.data(), bytes);
-    if (written != static_cast<ssize_t>(bytes)) {
+    if (::write(append_fd, batch.data(), bytes) != bytes) {
         throw std::runtime_error("Partial write");
     }
 
-    if (::fsync(append_fd) != 0) {
+    if (::fsync(append_fd) == -1) {
         throw std::runtime_error("fsync failed");
     }
 
