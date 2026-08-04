@@ -88,8 +88,6 @@ bool Storage::append(Record r)
 std::vector<Record> Storage::readAll() const {
     std::shared_lock lock(diskMutex);
 
-    validateRecordCount();
-
     struct stat st;
     if (::fstat(read_fd, &st) != 0){
         throw std::runtime_error("Failed to read file stats: " + filename); 
@@ -124,8 +122,6 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     if (sparseIndex.empty()) return {};
 
     if (endTs < sparseIndex[0].timestamp) return {};
-
-    validateRecordCount();
 
     startTs = std::max(sparseIndex[0].timestamp, startTs);
     endTs = std::min(lastTimestamp, endTs);
@@ -202,8 +198,6 @@ std::optional<Record> Storage::readFromTime(int64_t timestamp) const
 std::optional<Record> Storage::getLastRecord() const
 {
     std::shared_lock lock(diskMutex);
-
-    validateRecordCount();
     
     struct stat st;
     if (::fstat(read_fd, &st) != 0){
@@ -233,8 +227,6 @@ std::optional<Record> Storage::getLastRecord() const
 Record Storage::getRecord(size_t index) const
 {
     std::shared_lock lock(diskMutex);
-
-    validateRecordCount();
 
     if (index >= recordCount) throw std::out_of_range("Record index out of range");
 
