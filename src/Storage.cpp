@@ -88,8 +88,6 @@ bool Storage::append(Record r)
 std::vector<Record> Storage::readAll() const {
     std::shared_lock lock(diskMutex);
 
-    validateRecordCount();
-
     struct stat st;
     if (::fstat(read_fd, &st) != 0){
         throw std::runtime_error("Failed to read file stats: " + filename); 
@@ -124,8 +122,6 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     if (sparseIndex.empty()) return {};
 
     if (endTs < sparseIndex[0].timestamp) return {};
-
-    validateRecordCount();
 
     startTs = std::max(sparseIndex[0].timestamp, startTs);
     endTs = std::min(lastTimestamp, endTs);
@@ -182,7 +178,9 @@ std::vector<Record> Storage::readRange(int64_t startTs, int64_t endTs) const
     for (size_t i=lastDiskIndex.value(); i<recordCount; i++)
     {
         Record record;
-        if (::pread(read_fd, &record, sizeof(Record), sizeof(TSDBHeader)+i*sizeof(Record)) != sizeof(Record));
+        if (::pread(read_fd, &record, sizeof(Record), sizeof(TSDBHeader)+i*sizeof(Record)) != sizeof(Record)){
+            throw std::runtime_error("Failed to read records from file: " + filename);
+        }
         if (record.timestamp > endTs) break;
         validateCRC(record);
         records.push_back(record);
@@ -200,8 +198,6 @@ std::optional<Record> Storage::readFromTime(int64_t timestamp) const
 std::optional<Record> Storage::getLastRecord() const
 {
     std::shared_lock lock(diskMutex);
-
-    validateRecordCount();
     
     struct stat st;
     if (::fstat(read_fd, &st) != 0){
@@ -231,8 +227,6 @@ std::optional<Record> Storage::getLastRecord() const
 Record Storage::getRecord(size_t index) const
 {
     std::shared_lock lock(diskMutex);
-
-    validateRecordCount();
 
     if (index >= recordCount) throw std::out_of_range("Record index out of range");
 
@@ -403,12 +397,11 @@ void Storage::flushBufferToDisk(std::vector<Record>& batch) {
 
     size_t bytes = batch.size() * sizeof(Record);
 
-    ssize_t written = ::write(append_fd, batch.data(), bytes);
-    if (written != static_cast<ssize_t>(bytes)) {
+    if (::write(append_fd, batch.data(), bytes) != bytes) {
         throw std::runtime_error("Partial write");
     }
 
-    if (::fsync(append_fd) != 0) {
+    if (::fsync(append_fd) == -1) {
         throw std::runtime_error("fsync failed");
     }
 
